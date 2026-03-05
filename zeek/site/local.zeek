@@ -1,9 +1,9 @@
-##
-## IoT Security Gateway — Zeek Local Policy
-##
-## This file is loaded automatically by Zeek. Add your custom
-## detection logic, protocol analysers, and logging configuration here.
-##
+#
+# IoT Security Gateway — Zeek Local Policy
+#
+# This file is loaded automatically by Zeek. Add your custom
+# detection logic, protocol analysers, and logging configuration here.
+#
 
 # Load standard analysis scripts.
 @load base/protocols/conn
@@ -18,7 +18,7 @@
 # Reduce log noise: disable the packet filter log and the loaded-scripts log.
 @load base/misc/version
 
-# ---- Custom IoT Detection Logic ----
+# ---- Custom Detection Logic ----
 # Add your own scripts here as the project develops.
 # Examples:
 #   @load ./detect-iot-scan.zeek
@@ -26,6 +26,6 @@
 #   @load ./alert-to-ryu.zeek
 
 # ---- Ryu REST API Integration ----
-# When you develop detection scripts that should trigger dynamic
+# When we develop detection scripts that should trigger dynamic
 # isolation, use Zeek's ActiveHTTP module or the Input framework
 # to POST to the Ryu REST API at http://ryu:8080/...

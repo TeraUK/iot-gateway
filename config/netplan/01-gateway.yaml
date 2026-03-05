@@ -3,6 +3,13 @@
 #sudo chown root:root /etc/netplan/01-gateway.yaml
 #sudo chmod 600 /etc/netplan/01-gateway.yaml
 
+#Must be aplied with sudo netplan apply
+
+#Netplan is an abstraction layer for configuring systemd-networkd.
+#We configure the WAN here so systemd manages it automatically for now during development allowing easy SSH, internet access etc. 
+#By not adding the other interfaces we tell netplan to leave those alone as we are managing them.
+#This means that currently inbound traffic is not managed, so this will need to be removed eventually.
+
 network:
   version: 2
   renderer: networkd
