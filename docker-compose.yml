@@ -43,7 +43,7 @@ services:
       - ./adguard/conf:/opt/adguardhome/conf
       - ./adguard/work:/opt/adguardhome/work
     networks:
-      - gateway-net:
+      gateway-net:
           ipv4_address: 172.20.0.53
     deploy:
       resources:
