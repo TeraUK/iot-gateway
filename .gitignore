@@ -3,6 +3,7 @@
 *.pem
 *_secret*
 .env
+*.psk
 
 # Docker runtime data
 docker-compose.override.yml
