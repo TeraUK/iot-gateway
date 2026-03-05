@@ -1,0 +1,105 @@
+'Current architecture - WAN uplink currently managed automatically by systemd.networkd, as defined in netplan config
+
+@startuml iot_gateway_architecture
+
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 8
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+title **IoT Security Gateway Architecture**\nSDN-Based Hybrid Native/Containerised Deployment
+
+' == External Entities ==
+
+node "**Internet**" as internet #E0E0E0
+node "**Upstream Router**\n(Home/Corporate Network)" as router #E0E0E0
+node "**IoT Devices**\n(Smart Bulbs, Thermostats,\nCameras, etc.)" as iot_devices #E0E0E0
+
+' == Host System ==
+
+package "**Mini PC Host** - Ubuntu Server 24.04 LTS  /  Intel i5-12500T  /  16 GB RAM" as host #E8F4FD {
+
+    ' == Native Components ==
+
+    package "**Native Components** (data path + bootstrapping)" as native #BBDEFB {
+        component "**enp2s0**\nWAN Uplink\nDHCP from Router" as enp2s0
+        component "**Open vSwitch (br0)**\n192.168.50.1/24\nOpenFlow 1.3 Data Plane" as ovs
+        component "**wlp3s0**\nWiFi Radio (OVS Port)" as wlan0
+        component "**hostapd**\nWiFi AP: IoT-Security-AP\nWPA2-PSK (CCMP)" as hostapd
+        component "**dnsmasq**\nDHCP Only (DNS disabled)\nRange: .50-.150" as dnsmasq
+        component "**nftables**\nNAT masquerade\nDNS DNAT to 172.20.0.53" as nftables
+    }
+
+    ' == Docker Layer ==
+
+    package "**Docker Engine**" as docker #F3E5F5 {
+
+        package "**gateway-net** (172.20.0.0/24)" as gateway_net #E1BEE7 {
+            component "**Ryu SDN Controller**\n172.20.0.x\nOpenFlow: 6653\nREST API: 8080" as ryu
+            component "**AdGuard Home**\n172.20.0.53 (static)\nDNS: 53 (TCP/UDP)\nAdmin: host:8088" as adguard
+            component "**Zeek**\n172.20.0.x\nPassive Analysis\nMirror: zeek-eth1" as zeek
+            component "**ML Pipeline**\n172.20.0.x\nAnomaly Detection" as ml_pipeline
+        }
+    }
+
+    ' == Shared Resources ==
+
+    database "**zeek-logs**\n(Docker Volume)\nconn.log, dns.log\nhttp.log, ssl.log" as zeek_vol #C8E6C9
+    component "**zeek-mirror.service**\n(systemd watcher)" as mirror_svc #FFCDD2
+}
+
+' == External Connections ==
+
+internet --> router
+router --> enp2s0 : WAN DHCP
+iot_devices --> wlan0 : WiFi (WPA2-PSK)
+
+' == Native Internal ==
+
+wlan0 --> hostapd : Radio Mgmt
+wlan0 --> ovs : L2 Frames (OVS Port)
+ovs --> nftables : IP Forwarding
+nftables --> enp2s0 : NAT Masquerade
+
+' == OVS to Ryu ==
+
+ovs <--> ryu : OpenFlow 1.3\nTCP:6653
+
+' == DNS Flow ==
+
+ovs ..> nftables : DNS queries\n(any destination)
+nftables --> adguard : DNAT to\n172.20.0.53
+
+' == DHCP ==
+
+ovs ..> dnsmasq : DHCP (UDP:67/68)
+
+' == Mirror Traffic ==
+
+ovs --> zeek : Mirrored Traffic\n(veth pair)
+mirror_svc ..> zeek : Manages veth\nlifecycle
+
+' == Zeek to ML Pipeline ==
+
+zeek --> zeek_vol : Writes logs
+zeek_vol --> ml_pipeline : Reads logs
+
+' == Analysis to Control Plane ==
+
+zeek --> ryu : REST API POST :8080\n(threat alerts)
+ml_pipeline --> ryu : REST API POST :8080\n(anomaly response)
+
+' == Legend ==
+
+legend bottom left
+    |= Colour |= Meaning |
+    | <#BBDEFB> | Native host component |
+    | <#FFF3E0> | Containerised application |
+    | <#E1BEE7> | Docker network |
+    | <#C8E6C9> | Shared storage |
+    | <#FFCDD2> | System service |
+endlegend
+
+@enduml
