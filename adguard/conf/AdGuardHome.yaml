@@ -17,20 +17,22 @@ dns:
     - 0.0.0.0
   port: 53
   anonymize_client_ip: false
-  ratelimit: 20
+  ratelimit: 150
   ratelimit_subnet_len_ipv4: 24
   ratelimit_subnet_len_ipv6: 56
   ratelimit_whitelist: []
   refuse_any: true
   upstream_dns:
     - https://dns10.quad9.net/dns-query
+    - https://dns.cloudflare.com/dns-query
   upstream_dns_file: ""
   bootstrap_dns:
     - 9.9.9.10
     - 149.112.112.10
     - 2620:fe::10
     - 2620:fe::fe:10
-  fallback_dns: []
+  fallback_dns:
+    - https://dns.cloudflare.com/dns-query
   upstream_mode: load_balance
   fastest_timeout: 1s
   allowed_clients: []
@@ -51,7 +53,7 @@ dns:
   cache_optimistic_max_age: 12h
   bogus_nxdomain: []
   aaaa_disabled: false
-  enable_dnssec: false
+  enable_dnssec: true
   edns_client_subnet:
     custom_ip: ""
     enabled: false
@@ -99,7 +101,7 @@ querylog:
 statistics:
   dir_path: ""
   ignored: []
-  interval: 24h
+  interval: 720h
   enabled: true
   ignored_enabled: false
 filters:
@@ -111,6 +113,26 @@ filters:
     url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_2.txt
     name: AdAway Default Blocklist
     id: 2
+  - enabled: true
+    url: https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt
+    name: Hagezi Multi PRO
+    id: 3
+  - enabled: true
+    url: https://big.oisd.nl
+    name: OISD Big
+    id: 4
+  - enabled: true
+    url: https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/tif.txt
+    name: Hagezi Threat Intelligence Feeds
+    id: 5
+  - enabled: true
+    url: https://v.firebog.net/hosts/Easyprivacy.txt
+    name: Firebog EasyPrivacy (Telemetry)
+    id: 6
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_4.txt
+    name: AdGuard Tracking Protection
+    id: 7
 whitelist_filters: []
 user_rules: []
 dhcp:
@@ -162,7 +184,7 @@ filtering:
   filtering_enabled: true
   rewrites_enabled: true
   parental_enabled: false
-  safebrowsing_enabled: false
+  safebrowsing_enabled: true
   protection_enabled: true
 clients:
   runtime_sources:
