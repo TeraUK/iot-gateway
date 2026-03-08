@@ -23,4 +23,4 @@ COPY apps/ /opt/ryu/apps/
 EXPOSE 6653 8080
 
 # Run Ryu with the specified application.
-CMD ["ryu-manager", "--ofp-listen-host", "0.0.0.0", "--ofp-tcp-listen-port", "6653", "--wsapi-host", "0.0.0.0", "--wsapi-port", "8080", "ryu.app.ofctl_rest", "/opt/ryu/apps/minimal_l2_switch.py"]
+CMD ["ryu-manager", "--ofp-listen-host", "0.0.0.0", "--ofp-tcp-listen-port", "6653", "--wsapi-host", "0.0.0.0", "--wsapi-port", "8080", "ryu.app.ofctl_rest", "/opt/ryu/apps/gateway_policy.py"]
