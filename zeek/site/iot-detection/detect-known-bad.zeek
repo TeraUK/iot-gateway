@@ -1,13 +1,3 @@
-# IoT Security Gateway - Known-Bad Indicator Detection
-#
-# Flags any connection attempt to IP addresses or domains on threat
-# intelligence feeds. Integrates with blocklists and IOC feeds to
-# detect connections to known C2 infrastructure.
-#
-# IOC data is loaded from input files that can be updated externally
-# without restarting Zeek (Zeek's Input framework re-reads them
-# automatically on change).
-
 @load ./alert-framework
 @load base/frameworks/input
 
@@ -22,20 +12,20 @@ export {
     # Path to the file containing known-bad domain names (one per line).
     option known_bad_domains_file = "/usr/local/zeek/share/zeek/site/iot-iocs/known-bad-domains.dat";
 
-    # Set of known-bad IP addresses. Populated from the input file.
+    # Schema for reading the IOC IP file.
+    type IdxIP: record { ip: addr; };
+    type ValIP: record { description: string &default="No description"; };
+
+    # Schema for reading the IOC domain file.
+    type IdxDomain: record { domain: string; };
+    type ValDomain: record { description: string &default="No description"; };
+
+    # Table of known-bad IP addresses. Populated from the input file.
     global bad_ip_table: table[addr] of ValIP = {};
 
-    # Set of known-bad domain names. Populated from the input file.
+    # Table of known-bad domain names. Populated from the input file.
     global bad_domain_table: table[string] of ValDomain = {};
 }
-
-# Schema for reading the IOC IP file.
-type IdxIP: record { ip: addr; };
-type ValIP: record { description: string &default="No description"; };
-
-# Schema for reading the IOC domain file.
-type IdxDomain: record { domain: string; };
-type ValDomain: record { description: string &default="No description"; };
 
 event zeek_init()
     {
@@ -85,6 +75,7 @@ event connection_established(c: connection)
                 dst, c$id$resp_p, ip_desc),
             ip_details,
             dst, c$id$resp_p);
+        }
     }
 
 # Check DNS queries against the known-bad domain list.
@@ -104,7 +95,8 @@ event dns_request(c: connection, msg: dns_msg, query: string,
             "{\"bad_domain\": \"%s\", \"ioc_description\": \"%s\"}",
             q, dom_desc);
 
-    emit_alert(CRITICAL, "known-bad-domain", src,
-        fmt("DNS query for known-bad domain: %s (%s)", q, dom_desc),
-        dom_details);
+        emit_alert(CRITICAL, "known-bad-domain", src,
+            fmt("DNS query for known-bad domain: %s (%s)", q, dom_desc),
+            dom_details);
+        }
     }
