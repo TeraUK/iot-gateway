@@ -28,13 +28,13 @@ Usage:
 """
 
 import argparse
+import subprocess
 import json
 import os
 import sys
 import gzip
 from collections import defaultdict
 from datetime import datetime, timezone
-
 
 # The IoT subnet. Only devices in this range are profiled.
 IOT_SUBNET_PREFIX = "192.168.50."
@@ -90,33 +90,40 @@ def load_dhcp_leases(leases_path):
 
     return ip_to_mac
 
-
-def open_log_file(filepath):
-    """Open a log file, handling gzip-compressed files transparently."""
-    if filepath.endswith(".gz"):
-        return gzip.open(filepath, "rt")
-    return open(filepath, "r")
-
-
 def find_log_files(zeek_dir, log_name):
     """
-    Find all instances of a log file (current and rotated/archived).
-    Searches the zeek_dir and a nested archive/ subdirectory.
+    Find all instances of a log file inside the Zeek Docker container.
     """
-    files = []
-    for root, dirs, filenames in os.walk(zeek_dir):
-        for fn in filenames:
-            # Match files like conn.log, conn.2025-03-01-12:00:00.log, conn.log.gz, etc.
-            if fn.startswith(log_name.replace(".log", "")) and (fn.endswith(".log") or fn.endswith(".log.gz")):
-                files.append(os.path.join(root, fn))
-    return sorted(files)
-
+    base_name = log_name.replace(".log", "")
+    # Use docker exec to run 'find' inside the container
+    cmd = ["docker", "exec", "zeek", "find", zeek_dir, "-type", "f", "-name", f"{base_name}*"]
+    
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        files = []
+        for line in result.stdout.splitlines():
+            filepath = line.strip()
+            # Ensure we only grab .log or .log.gz files
+            if filepath.endswith(".log") or filepath.endswith(".log.gz"):
+                files.append(filepath)
+        return sorted(files)
+    except subprocess.CalledProcessError as e:
+        print(f"  Warning: Failed to find logs in container. Error: {e.stderr}", file=sys.stderr)
+        return []
 
 def parse_json_log(filepath):
-    """Parse a Zeek JSON log file, yielding one dict per line."""
+    """
+    Parse a Zeek JSON log file by streaming it directly from the container.
+    """
+    # Use zcat for compressed logs, standard cat for plain text
+    cat_cmd = "zcat" if filepath.endswith(".gz") else "cat"
+    cmd = ["docker", "exec", "zeek", cat_cmd, filepath]
+
     try:
-        with open_log_file(filepath) as f:
-            for line in f:
+        # Use Popen to stream the data line-by-line. 
+        # This prevents the script from consuming massive amounts of RAM for large log files.
+        with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
+            for line in proc.stdout:
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
@@ -124,8 +131,8 @@ def parse_json_log(filepath):
                     yield json.loads(line)
                 except json.JSONDecodeError:
                     continue
-    except (IOError, OSError) as e:
-        print(f"  Warning: could not read {filepath}: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"  Warning: could not read {filepath} via docker: {e}", file=sys.stderr)
 
 
 def analyse_conn_logs(zeek_dir, ip_to_mac):
