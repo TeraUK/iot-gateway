@@ -1,0 +1,16 @@
+[Unit]
+Description=Watch for Zeek container starts and attach OVS mirror port
+After=docker.service ovs-vswitchd.service
+Requires=docker.service ovs-vswitchd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/attach-zeek-mirror.sh
+
+#Cleans up the netns symlink on stop.
+ExecStop=/bin/bash -c 'rm -f /var/run/netns/zeek; ovs-vsctl --if-exists del-port br0 zeek-veth-h; ip link delete zeek-veth-h 2>/dev/null || true'
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
