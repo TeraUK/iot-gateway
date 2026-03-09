@@ -23,3 +23,5 @@
 # Example entries (replace with real IOCs):
 # evil-c2-server.example.com	Example C2 domain
 # malware-drop.example.net	Example malware distribution
+
+evil-test-domain.local	Simulated malicious C2 domain for testing
