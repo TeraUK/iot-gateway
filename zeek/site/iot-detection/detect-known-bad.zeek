@@ -23,55 +23,43 @@ export {
     option known_bad_domains_file = "/usr/local/zeek/share/zeek/site/iot-iocs/known-bad-domains.dat";
 
     # Set of known-bad IP addresses. Populated from the input file.
-    global bad_ips: set[addr] = {};
-
-    # Table of known-bad IP descriptions for alert context.
-    global bad_ip_descriptions: table[addr] of string = {};
+    global bad_ip_table: table[addr] of ValIP = {};
 
     # Set of known-bad domain names. Populated from the input file.
-    global bad_domains: set[string] = {};
-
-    # Table of known-bad domain descriptions for alert context.
-    global bad_domain_descriptions: table[string] of string = {};
+    global bad_domain_table: table[string] of ValDomain = {};
 }
 
 # Schema for reading the IOC IP file.
-type BadIPEntry: record {
-    ip: addr;
-    description: string &default="No description";
-};
+type IdxIP: record { ip: addr; };
+type ValIP: record { description: string &default="No description"; };
 
 # Schema for reading the IOC domain file.
-type BadDomainEntry: record {
-    domain: string;
-    description: string &default="No description";
-};
+type IdxDomain: record { domain: string; };
+type ValDomain: record { description: string &default="No description"; };
 
 event zeek_init()
     {
-    # Load known-bad IPs from the input file.
     if ( file_size(known_bad_ips_file) >= 0 )
         {
         Input::add_table([
             $source = known_bad_ips_file,
             $name = "bad_ips_feed",
-            $idx = BadIPEntry,
-            $destination = bad_ips,
-            $mode = Input::REREAD,
-            $want_record = F
+            $idx = IdxIP,
+            $val = ValIP,
+            $destination = bad_ip_table,
+            $mode = Input::REREAD
         ]);
         }
 
-    # Load known-bad domains from the input file.
     if ( file_size(known_bad_domains_file) >= 0 )
         {
         Input::add_table([
             $source = known_bad_domains_file,
             $name = "bad_domains_feed",
-            $idx = BadDomainEntry,
-            $destination = bad_domains,
-            $mode = Input::REREAD,
-            $want_record = F
+            $idx = IdxDomain,
+            $val = ValDomain,
+            $destination = bad_domain_table,
+            $mode = Input::REREAD
         ]);
         }
     }
@@ -85,21 +73,18 @@ event connection_established(c: connection)
     if ( ! is_iot_device(src) )
         return;
 
-    if ( dst in bad_ips )
+    if ( dst in bad_ip_table )
         {
-        local desc = dst in bad_ip_descriptions ?
-            bad_ip_descriptions[dst] : "Known-bad IP (threat intelligence)";
-
-        local details = fmt(
+        local ip_desc = bad_ip_table[dst]$description;
+        local ip_details = fmt(
             "{\"bad_ip\": \"%s\", \"dst_port\": \"%s\", \"ioc_description\": \"%s\"}",
-            dst, c$id$resp_p, desc);
+            dst, c$id$resp_p, ip_desc);
 
         emit_alert(CRITICAL, "known-bad-ip", src,
             fmt("Connection to known-bad IP: %s:%s (%s)",
-                dst, c$id$resp_p, desc),
-            details,
+                dst, c$id$resp_p, ip_desc),
+            ip_details,
             dst, c$id$resp_p);
-        }
     }
 
 # Check DNS queries against the known-bad domain list.
@@ -112,17 +97,14 @@ event dns_request(c: connection, msg: dns_msg, query: string,
         return;
 
     local q = to_lower(query);
-    if ( q in bad_domains )
+    if ( q in bad_domain_table )
         {
-        local desc = q in bad_domain_descriptions ?
-            bad_domain_descriptions[q] : "Known-bad domain (threat intelligence)";
-
-        local details = fmt(
+        local dom_desc = bad_domain_table[q]$description;
+        local dom_details = fmt(
             "{\"bad_domain\": \"%s\", \"ioc_description\": \"%s\"}",
-            q, desc);
+            q, dom_desc);
 
-        emit_alert(CRITICAL, "known-bad-domain", src,
-            fmt("DNS query for known-bad domain: %s (%s)", q, desc),
-            details);
-        }
+    emit_alert(CRITICAL, "known-bad-domain", src,
+        fmt("DNS query for known-bad domain: %s (%s)", q, dom_desc),
+        dom_details);
     }
