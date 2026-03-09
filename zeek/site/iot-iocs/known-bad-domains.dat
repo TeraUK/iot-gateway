@@ -1,0 +1,25 @@
+#fields	domain	description
+#
+# IoT Security Gateway - Known-Bad Domain Names
+#
+# This file is read by Zeek's Input framework and automatically
+# re-read when modified. I can update it without restarting Zeek.
+#
+# Format: one domain per line (lowercase), followed by a tab and
+# a description. Lines starting with # are comments (except the
+# #fields header which Zeek requires).
+#
+# Note: this complements AdGuard's DNS blocklists. AdGuard blocks
+# queries at the DNS level (device gets no IP back). This file
+# catches cases where a device might have cached an IP or received
+# it through a non-DNS channel and attempts a connection to a
+# domain that resolves to a known-bad IP.
+#
+# Sources for populating this file:
+#   - Abuse.ch URLhaus (malware distribution domains)
+#   - DGArchive (known DGA domains)
+#   - Manual additions from incident investigations
+#
+# Example entries (replace with real IOCs):
+# evil-c2-server.example.com	Example C2 domain
+# malware-drop.example.net	Example malware distribution

@@ -1,0 +1,20 @@
+#fields	ip	description
+#
+# IoT Security Gateway - Known-Bad IP Addresses
+#
+# This file is read by Zeek's Input framework and automatically
+# re-read when modified. I can update it without restarting Zeek.
+#
+# Format: one IP per line, followed by a tab and a description.
+# Lines starting with # are comments (except the #fields header
+# which Zeek requires).
+#
+# Sources for populating this file:
+#   - Abuse.ch Feodo Tracker (C2 IPs)
+#   - Emerging Threats blocklists
+#   - Spamhaus DROP/EDROP lists
+#   - Manual additions from incident investigations
+#
+# Example entries (replace with real IOCs):
+# 198.51.100.99	Example C2 server (Feodo Tracker)
+# 203.0.113.200	Example malware distribution (manual add)
