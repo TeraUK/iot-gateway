@@ -82,6 +82,6 @@ event connection_state_remove(c: connection)
         {
         SumStats::observe("iot.volume.bytes_out",
                           SumStats::Key($host = src),
-                          SumStats::Observation($num = c$conn$orig_ip_bytes + 0.0));
+                          SumStats::Observation($num = c$conn$orig_ip_bytes));
         }
     }
