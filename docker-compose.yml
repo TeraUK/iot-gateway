@@ -75,7 +75,7 @@ services:
       # Zeek writes logs here; the ML pipeline reads from here.
       - zeek-logs:/opt/zeek-logs
       # Mount the entire site directory (detection scripts + IOCs).
-      - ./zeek/site:/usr/local/zeek/share/zeek/site:ro
+      - ./zeek/site:/usr/local/zeek/share/zeek/site
       - ./zeek/entrypoint.sh:/opt/zeek-entrypoint/entrypoint.sh:ro
       # Mounting the entire `site/` directory replaces the default 
       # contents of `/usr/local/zeek/share/zeek/site/` inside the container.
@@ -117,7 +117,6 @@ services:
       # Mount as read-only - the pipeline loads but never overwrites models.
       - ./ml-pipeline/models:/opt/ml-pipeline/models:ro
       # Alert threshold configuration (thresholds.yml).
-      # Edit on the host and restart the container to apply changes.
       - ./ml-pipeline/config:/opt/ml-pipeline/config:ro
     environment:
       - RYU_API_URL=http://ryu:8080
