@@ -48,10 +48,10 @@ rules:
   # Flag as CRITICAL if DNS query count exceeds this multiple of the device's
   # established baseline mean. Requires baseline_established() == True.
   # 10x baseline matches the CRITICAL threshold defined in the security policy.
-  dns_rate_critical_multiplier: 10.0
+  dns_rate_critical_multiplier: 15.0
 
   # Flag as WARNING if DNS query count exceeds this multiple of baseline.
-  dns_rate_warning_multiplier: 2.0
+  dns_rate_warning_multiplier: 5.0
 
   # Flag as CRITICAL if total bytes in the window exceeds this multiple of
   # the device's established baseline. Catches DDoS participation.
@@ -70,10 +70,10 @@ rules:
 
   # Flag as WARNING if mean DNS query name entropy exceeds this value.
   # Values above 3.5 are indicative of DGA or DNS tunnelling.
-  dns_entropy_warning: 3.50
+  dns_entropy_warning: 4
 
   # Flag as CRITICAL if mean DNS query name entropy exceeds this value.
-  dns_entropy_critical: 3.80
+  dns_entropy_critical: 5
 
 # ---------------------------------------------------------------------------
 # Scoring behaviour
