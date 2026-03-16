@@ -4,7 +4,7 @@
 
 At this point in time the WAN uplink is managed automatically by systemd.networkd, as defined in netplan config. **The WAN interface will be moved into OVS in the future.**
 
-![Diagram of High Level Architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/TeraUK/iot-gateway/refs/heads/main/Documentation/architecture-diagram.puml)
+![Diagram of High Level Architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/TeraUK/iot-gateway/refs/heads/main/architecture-diagram.puml)
 
 # IoT Security Gateway — Quick Reference
 

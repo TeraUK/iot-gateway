@@ -33,7 +33,8 @@ else
     exit 1
 fi
 
-# Check that the policy app loaded (not the learning switch).
+# Check that the policy app loaded
+# Note may fail if the app has been running for a while and the last 50 logs don't include the startup messages. In that case, check the logs manually.
 RYU_LOGS=$(docker logs ryu-controller 2>&1 | tail -50)
 if echo "$RYU_LOGS" | grep -q "Policy rules installed"; then
     pass "Gateway policy app loaded and rules installed"
