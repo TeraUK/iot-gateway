@@ -1,0 +1,26 @@
+# docs/requirements.txt
+#
+# Python dependencies for building the MkDocs documentation site.
+# Install via build-docs.sh, which manages an isolated virtual environment,
+# or manually with: pip install -r docs/requirements.txt
+#
+# To upgrade all packages to their latest compatible versions, run:
+#   pip install --upgrade -r docs/requirements.txt
+# then commit the updated file.
+
+# Core MkDocs framework
+mkdocs>=1.6
+
+# Material for MkDocs theme (navigation tabs, search, code copy, dark mode)
+mkdocs-material>=9.5
+
+# Python docstring extraction (used for the ML pipeline API reference)
+mkdocstrings[python]>=0.25
+
+# Diagram rendering via the Kroki service (UML, sequence diagrams, etc.)
+mkdocs-kroki-plugin>=0.8
+
+# Markdown extensions bundled with Material (admonition, superfences, etc.)
+# pymdownx is pulled in as a dependency of mkdocs-material but listed
+# explicitly here to make the dependency visible.
+pymdown-extensions>=10.7
