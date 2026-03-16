@@ -1,6 +1,6 @@
 # Data Flow
 
-This page traces how data moves between components — from raw network traffic through to an isolation action — and provides a complete inventory of every log the system produces, where it is stored, who writes it, and how long it is kept.
+This page provides a complete inventory of every log the system produces, where it is stored, who writes it, and how long it is kept.
 
 ---
 
@@ -45,124 +45,27 @@ nftables (DoT/DoQ block events)
 
 ---
 
-## Detection-to-isolation loop
-
-There are two parallel paths from detection to isolation. Both converge on the Ryu REST API.
-
-### Path 1: Zeek rule-based detection
-
-```
-Zeek captures packet
-    │
-    ▼
-Detection script evaluates event
-  (detect-port-scan, detect-dns-anomaly,
-   detect-new-destination, detect-protocol-anomaly,
-   detect-volume-anomaly, detect-known-bad)
-    │
-    ▼
-alert-framework.zeek: emit_alert()
-    │
-    ├── severity = INFO    → write to iot_alerts.log only
-    ├── severity = WARNING → write to iot_alerts.log only
-    └── severity = CRITICAL, auto_isolate = T
-            │
-            ▼
-        ActiveHTTP POST → ryu:8080/policy/isolate
-            │
-            ▼
-        Ryu installs priority-65535 DROP rule in OVS
-```
-
-see [Zeek](../components/zeek.md)
-
-### Path 2: ML pipeline anomaly detection
-
-```
-ML Pipeline polls Zeek log files (every POLL_INTERVAL seconds)
-    │
-    ▼
-ingestor.py: reads new log lines, tagged by type
-    │
-    ▼
-state.py: resolves IP→MAC via dhcp.log entries,
-          adds entries to per-device rolling window (5 min)
-    │
-    ▼
-features.py: extracts 15-feature vector from window
-    │
-    ▼
-detector.py: Isolation Forest.decision_function()
-             returns anomaly score (higher = more anomalous)
-    │
-    ▼
-pipeline.py: classify() applies rule-based checks
-             then Isolation Forest thresholds
-    │
-    ├── severity = INFO    → write to ml_alerts.log only
-    ├── severity = WARNING → write to ml_alerts.log only
-    └── severity = CRITICAL, ML_AUTO_ISOLATE = true
-            │
-            ▼
-        alerter.py: POST → ryu:8080/policy/isolate
-                    (with exponential backoff retry)
-            │
-            ▼
-        Ryu installs priority-65535 DROP rule in OVS
-```
-
-see [ML-Pipeline](../components/ml-pipeline.md)
-
----
-
-## DNS cache update loop
-
-Domain-based allowlists in Ryu need to know the current IP addresses for permitted domains. The `dns_cache_updater` service provides this:
-
-```
-AdGuard resolves a DNS query for an IoT device
-    │  (query passes through nftables DNAT → AdGuard → upstream resolver)
-    ▼
-Zeek observes the DNS response, logs to dns.log
-    │
-    ▼
-dns_cache_updater.py (host systemd service)
-  - tails dns.log for new entries
-  - filters for domains in device profiles
-  - POST → ryu:8080/policy/dns-cache
-    │
-    ▼
-Ryu updates its internal DNS cache
-  - domain → IP mapping now known
-  - next Packet-In for that device+destination
-    resolves correctly against the allowlist
-```
-
-see [DNS Cache Updater](../services/dns-cache-updater.md)
-
----
-
 ## Complete log inventory
 
-### Zeek logs — `zeek-logs` Docker volume
+### Zeek logs -`zeek-logs` Docker volume
 
 All files live inside the container at `/opt/zeek-logs/` and on the host at the Docker volume mount path (`/var/lib/docker/volumes/iot-gateway_zeek-logs/_data`). All files are JSON, one object per line. Zeek rotates each file hourly, producing timestamped archive files that `log-maintenance.sh` compresses and moves to `/opt/zeek-logs/archive/`.
 
 | File | Written by | Content | Used by |
 |------|-----------|---------|---------|
-| `conn.log` | Zeek | TCP/UDP/ICMP connection summaries — src/dst IP, port, proto, bytes, duration, conn state | ML pipeline (primary feature source), profile_builder.py |
-| `dns.log` | Zeek | DNS queries and responses — query name, type, rcode, answer IPs | ML pipeline, dns_cache_updater, profile_builder.py |
-| `http.log` | Zeek | HTTP transactions — method, URI, host, status, User-Agent, response bytes | ML pipeline, manual investigation |
-| `ssl.log` | Zeek | TLS connections — SNI hostname, cert subject/issuer, validation status, cipher | ML pipeline, manual investigation |
-| `dhcp.log` | Zeek | DHCP lease assignments — MAC, assigned IP, hostname, lease time | ML pipeline (IP→MAC resolution), profile_builder.py |
-| `ntp.log` | Zeek | NTP traffic — server IP, stratum, reference ID | Anomaly investigation |
-| `ssh.log` | Zeek | SSH connections — client/server version, auth outcome | Detection scripts (IoT devices should never initiate SSH) |
-| `ftp.log` | Zeek | FTP connections — command, reply, data transfer size | Detection scripts (IoT devices should never initiate FTP) |
-| `software.log` | Zeek | Software fingerprints — HTTP User-Agents, SSH banners, DHCP vendor class | Baseline deviation detection |
-| `iot_alerts.log` | Zeek alert framework | Rule-based detection alerts — severity, detector, src MAC/IP, description, action taken | Alert response workflow, manual investigation |
-| `ml_alerts.log` | ML pipeline alerter | Isolation Forest anomaly alerts — same schema as `iot_alerts.log` plus anomaly score and model type | Alert response workflow, manual investigation |
+| `conn.log` | Zeek | TCP/UDP/ICMP connection summaries -src/dst IP, port, proto, bytes, duration, conn state | ML pipeline (primary feature source), profile_builder.py |
+| `dns.log` | Zeek | DNS queries and responses -query name, type, rcode, answer IPs | ML pipeline, dns_cache_updater, profile_builder.py |
+| `http.log` | Zeek | HTTP transactions -method, URI, host, status, User-Agent, response bytes | ML pipeline, manual investigation |
+| `ssl.log` | Zeek | TLS connections -SNI hostname, cert subject/issuer, validation status, cipher | ML pipeline, manual investigation |
+| `dhcp.log` | Zeek | DHCP lease assignments -MAC, assigned IP, hostname, lease time | ML pipeline (IP→MAC resolution), profile_builder.py |
+| `ntp.log` | Zeek | NTP traffic -server IP, stratum, reference ID | Anomaly investigation |
+| `ssh.log` | Zeek | SSH connections -client/server version, auth outcome | Detection scripts (IoT devices should never initiate SSH) |
+| `ftp.log` | Zeek | FTP connections -command, reply, data transfer size | Detection scripts (IoT devices should never initiate FTP) |
+| `software.log` | Zeek | Software fingerprints -HTTP User-Agents, SSH banners, DHCP vendor class | Baseline deviation detection |
+| `iot_alerts.log` | Zeek alert framework | Rule-based detection alerts -severity, detector, src MAC/IP, description, action taken | Alert response workflow, manual investigation |
+| `ml_alerts.log` | ML pipeline alerter | Isolation Forest anomaly alerts -same schema as `iot_alerts.log` plus anomaly score and model type | Alert response workflow, manual investigation |
 
-**Archive location:** `/opt/zeek-logs/archive/` — compressed `.log.gz` files, retained for 90 days.
+**Archive location:** `/opt/zeek-logs/archive/` -compressed `.log.gz` files, retained for 90 days.
 
 **Accessing logs:**
 
@@ -181,14 +84,14 @@ see [Zeek](../components/zeek.md)
 
 ---
 
-### AdGuard Home logs — `adguard/work/` bind mount
+### AdGuard Home logs -`adguard/work/` bind mount
 
 AdGuard's data directory is bind-mounted from the repository into the container (`./adguard/work:/opt/adguardhome/work`), so all files are accessible directly on the host under `adguard/work/`.
 
 | File | Content | Retention |
 |------|---------|-----------|
-| `adguard/work/data/querylog.json` | Every DNS query processed by AdGuard — timestamp, client IP, query domain, query type, response, whether it was blocked and by which rule, upstream resolver used, response time | 90 days (2160h), configured in `adguard/conf/AdGuardHome.yaml` |
-| `adguard/work/data/stats.db` | Aggregated statistics — query counts, blocked counts, top blocked domains, top querying clients, top upstream servers | 30 days (720h), configured in `adguard/conf/AdGuardHome.yaml` |
+| `adguard/work/data/querylog.json` | Every DNS query processed by AdGuard -timestamp, client IP, query domain, query type, response, whether it was blocked and by which rule, upstream resolver used, response time | 90 days (2160h), configured in `adguard/conf/AdGuardHome.yaml` |
+| `adguard/work/data/stats.db` | Aggregated statistics -query counts, blocked counts, top blocked domains, top querying clients, top upstream servers | 30 days (720h), configured in `adguard/conf/AdGuardHome.yaml` |
 
 AdGuard manages its own retention internally. The `log-maintenance.sh` script verifies the data directory exists but does not touch these files.
 
@@ -211,7 +114,7 @@ see [AdGuard Home](../components/adguard.md)
 
 ---
 
-### Ryu denied-log — in-memory, REST API
+### Ryu denied-log -in-memory, REST API
 
 When a profiled device attempts to reach a destination not in its allowlist, Ryu logs the attempt to an in-memory circular buffer (capped at the last 1000 entries). This log is not written to disk and is lost on Ryu restart.
 
@@ -246,11 +149,11 @@ see [ovs-ryu](../components/ovs-ryu.md)
 
 ---
 
-### dnsmasq logs — host filesystem
+### dnsmasq logs -host filesystem
 
 | Location | Content | Notes |
 |----------|---------|-------|
-| `/var/lib/misc/dnsmasq.leases` | Active DHCP leases — expiry time, MAC, IP, hostname, client ID | Updated live as leases are assigned or renewed. This file is the primary source for IP-to-MAC mapping used by `profile_builder.py` and the ML pipeline |
+| `/var/lib/misc/dnsmasq.leases` | Active DHCP leases -expiry time, MAC, IP, hostname, client ID | Updated live as leases are assigned or renewed. This file is the primary source for IP-to-MAC mapping used by `profile_builder.py` and the ML pipeline |
 | `/var/log/syslog` | DHCP assignment, renewal, and expiry events | Written by dnsmasq via syslog. Search with `grep dnsmasq /var/log/syslog` |
 
 The lease file is small and does not require rotation. It is verified by `log-maintenance.sh` but not modified by it.
@@ -267,7 +170,7 @@ see [dnsmasq](../components/dnsmasq.md)
 
 ---
 
-### hostapd logs — host syslog
+### hostapd logs -host syslog
 
 hostapd writes all WiFi association, authentication, and deauthentication events to syslog.
 
@@ -289,7 +192,7 @@ see [hostapd](../components/hostapd.md)
 
 ---
 
-### nftables kernel log — blocked DoT/DoQ events
+### nftables kernel log -blocked DoT/DoQ events
 
 The nftables ruleset logs DNS-over-TLS (port 853) and DNS-over-QUIC (port 8853) block events to the kernel log with prefixed messages.
 
@@ -298,7 +201,7 @@ The nftables ruleset logs DNS-over-TLS (port 853) and DNS-over-QUIC (port 8853) 
 | `/var/log/kern.log` or `/var/log/syslog` | `IOT-DOT-BLOCKED:` | Device attempted DNS-over-TLS (port 853) |
 | `/var/log/kern.log` or `/var/log/syslog` | `IOT-DOQ-BLOCKED:` | Device attempted DNS-over-QUIC (port 8853) |
 
-Each log entry includes the source IP, destination IP, and interface. A device that frequently generates these events is attempting to bypass AdGuard using encrypted DNS — this is a meaningful signal that the device may have a hardcoded encrypted resolver.
+Each log entry includes the source IP, destination IP, and interface. A device that frequently generates these events is attempting to bypass AdGuard using encrypted DNS -this is a meaningful signal that the device may have a hardcoded encrypted resolver.
 
 ```bash
 # View DoT/DoQ block events
@@ -317,7 +220,7 @@ see [nftables](../components/nftables.md)
 
 | Location | Content |
 |----------|---------|
-| `/var/log/gateway-maintenance.log` | Output from the daily `log-maintenance.sh` cron run — compression counts, retention pruning counts, volume disk usage, AdGuard and dnsmasq health checks |
+| `/var/log/gateway-maintenance.log` | Output from the daily `log-maintenance.sh` cron run -compression counts, retention pruning counts, volume disk usage, AdGuard and dnsmasq health checks |
 
 ```bash
 # View recent maintenance runs

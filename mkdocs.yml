@@ -52,7 +52,8 @@ nav:
   - Architecture:
     - Overview: architecture/overview.md
     - Network Topology: architecture/network-topology.md
-    - Data Flow and Logging: architecture/data-flow.md
+    - Log Generation: architecture/log-generation.md
+    - Automated Anomaly Detection and Isolation: architecture/detection-to-isolation-loop.md
     - Traffic Path Sequence Diagram: architecture/traffic-path-sequence-diagrams.md
   - Components:
     - OVS and Ryu: components/ovs-ryu.md

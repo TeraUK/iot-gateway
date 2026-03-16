@@ -132,3 +132,35 @@ For training instructions, see [Training the Model](../operations/training-the-m
 ## Known limitations
 
 The pipeline analyses outbound traffic only. Features are computed with the IoT device as the originator (`id.orig_h`). Inbound traffic patterns (e.g., an attacker probing the device) are not scored. The Zeek detection scripts provide rule-based coverage for inbound port probing.
+
+## API Reference
+
+The following reference is auto-generated from the source code docstrings.
+
+### pipeline.py
+
+::: pipeline
+
+### state.py
+
+::: state
+
+### ingestor.py
+
+::: ingestor
+
+### features.py
+
+::: features
+
+### detector.py
+
+::: detector
+
+### alerter.py
+
+::: alerter
+
+### train/train.py
+
+::: train

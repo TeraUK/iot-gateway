@@ -125,3 +125,30 @@ Profiles are stored at `ryu/config/device_profiles.json` and mounted read-only i
 ```bash
 curl -X POST http://127.0.0.1:8080/policy/allowlists/reload
 ```
+
+## DNS cache update loop
+
+Domain-based allowlists in Ryu need to know the current IP addresses for permitted domains. The `dns_cache_updater` service provides this:
+
+```
+AdGuard resolves a DNS query for an IoT device
+    │  (query passes through nftables DNAT → AdGuard → upstream resolver)
+    ▼
+Zeek observes the DNS response, logs to dns.log
+    │
+    ▼
+dns_cache_updater.py (host systemd service)
+  - tails dns.log for new entries
+  - filters for domains in device profiles
+  - POST → ryu:8080/policy/dns-cache
+    │
+    ▼
+Ryu updates its internal DNS cache
+  - domain → IP mapping now known
+  - next Packet-In for that device+destination
+    resolves correctly against the allowlist
+```
+
+see [DNS Cache Updater](../services/dns-cache-updater.md)
+
+---
