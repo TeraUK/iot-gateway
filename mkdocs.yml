@@ -1,0 +1,71 @@
+site_name: IoT Security Gateway
+site_description: Documentation for the SDN-based IoT security gateway
+site_author: TeraUK
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+  - kroki
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [ml-pipeline/app, ml-pipeline/train]
+          options:
+            show_source: true
+            show_root_heading: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Network Topology: architecture/network-topology.md
+    - Data Flow: architecture/data-flow.md
+  - Components:
+    - OVS and Ryu: components/ovs-ryu.md
+    - Zeek: components/zeek.md
+    - AdGuard Home: components/adguard.md
+    - ML Pipeline: components/ml-pipeline.md
+  - Reference:
+    - REST API: reference/api.md
+    - Configuration: reference/configuration.md
+    - Log Formats: reference/log-formats.md
+  - Operations:
+    - Device Onboarding: operations/device-onboarding.md
+    - Training the Model: operations/training-the-model.md
+    - Alert Response: operations/alert-response.md
+    - Log Maintenance: operations/log-maintenance.md
+  - Scripts: scripts/index.md
+  - Requirements: requirements/index.md
