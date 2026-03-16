@@ -22,11 +22,13 @@
 #   8.  Builds Docker images (skipped if already built, unless --rebuild is passed)
 #   9.  Creates the OVS bridge (br0), adds wlp3s0, assigns 192.168.50.1/24,
 #       and points the OpenFlow controller at Ryu on tcp:127.0.0.1:6653
-#   10. Installs attach-zeek-mirror.sh and zeek-mirror.service
-#   11. Installs dns_cache_updater.py and dns-cache-updater.service
-#   12. Installs log-maintenance.sh and configures the daily cron job
-#   13. Enables and starts all systemd services in dependency order
-#   14. Runs the health check to confirm a working state
+#   10. Generates adguard/conf/AdGuardHome.yaml from the base template,
+#       prompting for an admin username and password (skipped if already exists)
+#   11. Installs attach-zeek-mirror.sh and zeek-mirror.service
+#   12. Installs dns_cache_updater.py and dns-cache-updater.service
+#   13. Installs log-maintenance.sh and configures the daily cron job
+#   14. Enables and starts all systemd services in dependency order
+#   15. Runs the health check to confirm a working state
 #
 # Usage:
 #   sudo ./install.sh              # Fresh install or safe re-run
@@ -163,6 +165,7 @@ preflight() {
         "config/dnsmasq/dnsmasq.conf" \
         "config/dnsmasq/override.conf" \
         "config/nftables/nftables.conf" \
+        "adguard/conf/AdguardHome.yaml.base" \
         "Services/zeek-mirror/attach-zeek-mirror.sh" \
         "Services/zeek-mirror/zeek-mirror.service" \
         "Services/dns-cache-updater/dns_cache_updater.py" \
@@ -264,6 +267,7 @@ install_system_packages() {
         python3 \
         python3-pip \
         python3-venv \
+        python3-bcrypt \
         curl \
         dnsutils \
         nmap \
@@ -515,11 +519,11 @@ build_docker_images() {
 }
 
 # ---------------------------------------------------------------------------
-# Step 10: OVS bridge
+# Step 9: OVS bridge
 # ---------------------------------------------------------------------------
 
 configure_ovs() {
-    section "Step 10: Open vSwitch Bridge"
+    section "Step 9: Open vSwitch Bridge"
 
     # Ensures OVS is running before any vsctl commands.
     if ! systemctl is-active --quiet ovs-vswitchd; then
@@ -578,6 +582,127 @@ configure_ovs() {
     else
         skip "OVS controller already set to $expected_controller."
     fi
+}
+
+# ---------------------------------------------------------------------------
+# Step 10: AdGuard Home configuration
+# ---------------------------------------------------------------------------
+
+configure_adguard() {
+    section "Step 10: AdGuard Home Configuration"
+
+    local base_file="adguard/conf/AdguardHome.yaml.base"
+    local output_file="adguard/conf/AdGuardHome.yaml"
+
+    # AdGuard is already configured if the output file exists. The file is
+    # gitignored so it will never be present on a fresh clone. On re-runs
+    # it is left untouched -- credentials are never overwritten automatically.
+    if [ -f "$output_file" ]; then
+        skip "$output_file already exists. AdGuard configuration unchanged."
+        return
+    fi
+
+    info ""
+    info "AdGuard Home requires an admin username and password."
+    info "These credentials are used to access the admin UI at http://<host>:8088."
+    info "They will be stored (hashed) in $output_file."
+    info ""
+
+    local ag_user=""
+    local ag_pass=""
+    local ag_confirm=""
+
+    # Prompts for the admin username.
+    while [ -z "$ag_user" ]; do
+        read -r -p "  Enter AdGuard admin username: " ag_user
+        if [ -z "$ag_user" ]; then
+            echo "  Username cannot be empty. Try again."
+        fi
+    done
+
+    # Prompts for the admin password with confirmation.
+    while true; do
+        read -r -s -p "  Enter AdGuard admin password (min 8 characters): " ag_pass
+        echo ""
+
+        if [ "${#ag_pass}" -lt 8 ]; then
+            echo "  Password must be at least 8 characters. Try again."
+            continue
+        fi
+
+        read -r -s -p "  Confirm password: " ag_confirm
+        echo ""
+
+        if [ "$ag_pass" = "$ag_confirm" ]; then
+            break
+        else
+            echo "  Passwords do not match. Try again."
+        fi
+    done
+
+    info "Hashing password..."
+
+    # Generates a bcrypt hash of the password using the python3-bcrypt package.
+    # The hash is passed via a temp file to avoid exposing it in the process
+    # list or through shell variable interpolation of special characters.
+    local hash_file
+    hash_file=$(mktemp)
+
+    python3 - "$ag_pass" "$hash_file" <<'PYEOF'
+import sys
+import bcrypt
+
+password = sys.argv[1].encode('utf-8')
+pw_hash = bcrypt.hashpw(password, bcrypt.gensalt(rounds=10)).decode('utf-8')
+
+with open(sys.argv[2], 'w') as f:
+    f.write(pw_hash)
+PYEOF
+
+    local pw_hash
+    pw_hash=$(cat "$hash_file")
+    rm -f "$hash_file"
+
+    if [ -z "$pw_hash" ]; then
+        die "Failed to generate bcrypt hash. Ensure python3-bcrypt is installed."
+    fi
+
+    # Writes the final AdGuardHome.yaml by substituting the blank users block
+    # in the base template with the provided credentials. Python handles the
+    # file writing to avoid any issues with the $ characters in the bcrypt hash.
+    python3 - "$base_file" "$output_file" "$ag_user" "$pw_hash" <<'PYEOF'
+import sys
+
+base_path   = sys.argv[1]
+output_path = sys.argv[2]
+username    = sys.argv[3]
+pw_hash     = sys.argv[4]
+
+with open(base_path, 'r') as f:
+    content = f.read()
+
+# Replaces the blank users block in the base template.
+old_users = 'users:\n  - name:\n    password:'
+new_users = f'users:\n  - name: {username}\n    password: {pw_hash}'
+
+if old_users not in content:
+    print(f"ERROR: Expected users block not found in {base_path}.", file=sys.stderr)
+    sys.exit(1)
+
+content = content.replace(old_users, new_users)
+
+with open(output_path, 'w') as f:
+    f.write(content)
+PYEOF
+
+    # The config file contains a hashed credential, so it should not be
+    # world-readable. The adguard container runs as root internally, so
+    # root ownership is correct.
+    chmod 640 "$output_file"
+    chown root:root "$output_file"
+
+    success "Created $output_file with admin credentials."
+    info "AdGuard admin UI will be available at http://<host>:8088 after startup."
 }
 
 # ---------------------------------------------------------------------------
@@ -810,6 +935,9 @@ print_summary() {
     echo "  Verify Phase 1 (DNS + logging):"
     echo "    sudo ./scripts/verify-phase1.sh"
     echo ""
+    echo "  AdGuard admin UI (DNS filtering, blocklists):"
+    echo "    http://<gateway-host>:8088"
+    echo ""
     echo "  Verify Phase 2 (micro-segmentation):"
     echo "    sudo ./scripts/verify-phase2.sh"
     echo ""
@@ -857,6 +985,7 @@ main() {
     set_script_permissions
     build_docker_images
     configure_ovs
+    configure_adguard
     install_zeek_mirror_service
     install_dns_cache_updater
     install_log_maintenance
