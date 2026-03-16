@@ -56,3 +56,6 @@ temp/
 # Ignore the profile builder output
 draft_profiles.json
 
+# Ignore mkdocs output
+site/
+
