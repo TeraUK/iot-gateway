@@ -68,5 +68,14 @@ nav:
     - Training the Model: operations/training-the-model.md
     - Alert Response: operations/alert-response.md
     - Log Maintenance: operations/log-maintenance.md
-  - Scripts: scripts/Scripts.md
+  - Services:
+    - Overview: services/overview.md
+    - Zeek Mirror: services/zeek-mirror.md
+    - DNS Cache Updater: services/dns-cache-updater.md
+  - Scripts: 
+    - scripts/Scripts.md
+    - scripts/health-check.md
+    - scripts/log-maintenance.md
+    - scripts/profile-builder.md
+    - scripts/verification-scripts.md
   - Requirements: requirements/Requirements.md

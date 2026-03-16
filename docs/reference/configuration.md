@@ -75,7 +75,7 @@ Rule-based checks that override the Isolation Forest score. These run first.
 
 ---
 
-## `zeek/site/local.zeek` — detection thresholds
+## `zeek/site/local.zeek` - detection thresholds
 
 Detection script thresholds are overridden using `redef` statements at the bottom of `local.zeek`. Restart Zeek after changes.
 
