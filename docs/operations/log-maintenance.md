@@ -4,11 +4,11 @@ Continuous passive monitoring of a network with up to 20 IoT devices generates a
 
 ## What the script does
 
-1. **Compresses rotated Zeek logs** — Zeek rotates logs hourly and leaves timestamped files in `/opt/zeek-logs/`. The script compresses these with `gzip` and moves them to `/opt/zeek-logs/archive/`.
-2. **Enforces 90-day retention** — any compressed archive file older than 90 days is deleted.
-3. **Reports disk usage** — logs the total volume size, active file count, and archive file count.
-4. **Verifies AdGuard logging** — confirms AdGuard's query log data directory exists.
-5. **Verifies dnsmasq DHCP leases** — confirms the lease file exists and reports the active lease count.
+1. **Compresses rotated Zeek logs** - Zeek rotates logs hourly and leaves timestamped files in `/opt/zeek-logs/`. The script compresses these with `gzip` and moves them to `/opt/zeek-logs/archive/`.
+2. **Enforces 90-day retention** - any compressed archive file older than 90 days is deleted.
+3. **Reports disk usage** - logs the total volume size, active file count, and archive file count.
+4. **Verifies AdGuard logging** - confirms AdGuard's query log data directory exists.
+5. **Verifies dnsmasq DHCP leases** - confirms the lease file exists and reports the active lease count.
 
 ## Installation
 
@@ -35,7 +35,7 @@ sudo crontab -l | grep log-maintenance
 sudo /usr/local/bin/log-maintenance.sh
 ```
 
-The script is idempotent — safe to run multiple times. It skips already-compressed files and only deletes files older than 90 days.
+The script is idempotent - safe to run multiple times. It skips already-compressed files and only deletes files older than 90 days.
 
 ## Monitoring disk usage
 
@@ -77,4 +77,4 @@ AdGuard's retention is enforced internally by AdGuard and does not need the cron
 
 ## Log maintenance and the ML pipeline
 
-The ML pipeline tails live log files using byte offsets. If a log file is compressed and removed while the pipeline is running, it will detect the inode change on the next poll and reset its read position to 0 on the new (empty) log file. This is expected and handled gracefully — no data is lost from the perspective of alerting, since log maintenance only affects completed rotated files, not the active log file the pipeline is tailing.
+The ML pipeline tails live log files using byte offsets. If a log file is compressed and removed while the pipeline is running, it will detect the inode change on the next poll and reset its read position to 0 on the new (empty) log file. This is expected and handled gracefully - no data is lost from the perspective of alerting, since log maintenance only affects completed rotated files, not the active log file the pipeline is tailing.

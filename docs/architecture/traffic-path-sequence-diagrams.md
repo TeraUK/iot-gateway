@@ -11,7 +11,7 @@ Shows the forced DNAT interception through nftables to AdGuard, including the bl
 ```kroki-plantuml
 @startuml dns_query
 
-title DNS Query — Forced Interception via AdGuard Home
+title DNS Query - Forced Interception via AdGuard Home
 
 skinparam sequenceMessageAlign center
 skinparam responseMessageBelowArrow true
@@ -54,7 +54,7 @@ participant "Upstream DNS"       as dns   #F5F5F5
 note over dev
   Device may have a hardcoded
   resolver (e.g. 8.8.8.8).
-  It does not matter — all DNS
+  It does not matter - all DNS
   is intercepted regardless.
 end note
 
@@ -120,7 +120,7 @@ Shows the Phase 3 allowlist intercept, Ryu evaluation, reactive flow rule instal
 ```kroki-plantuml
 @startuml permitted_wan
 
-title Permitted WAN Connection — Per-Device Allowlist Enforcement (Enforcing Mode)
+title Permitted WAN Connection - Per-Device Allowlist Enforcement (Enforcing Mode)
 
 skinparam sequenceMessageAlign center
 skinparam responseMessageBelowArrow true
@@ -184,7 +184,7 @@ end note
 
 ryu -> ryu : Check DEVICE_MAC\nagainst device_profiles.json\nDestination IP is in allowed_cidrs\nor matches an allowed_domain → PERMIT
 
-ryu -> ovs : OFPFlowMod — install priority-500\nforward rule for this\nDEVICE_MAC + DEST_IP pair\n(with idle timeout)
+ryu -> ovs : OFPFlowMod - install priority-500\nforward rule for this\nDEVICE_MAC + DEST_IP pair\n(with idle timeout)
 
 note over ovs
   Subsequent packets in this flow
@@ -237,7 +237,7 @@ Shows the same intercept path but where the destination is not in the allowlist,
 ```kroki-plantuml
 @startuml blocked_connection
 
-title Blocked Connection Attempt — Destination Not in Device Allowlist
+title Blocked Connection Attempt - Destination Not in Device Allowlist
 
 skinparam sequenceMessageAlign center
 skinparam responseMessageBelowArrow true

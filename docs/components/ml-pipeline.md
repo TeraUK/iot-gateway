@@ -18,7 +18,7 @@ A separate **fleet model** (trained on all devices combined) acts as a fallback 
 | `features.py` | Extracts the 15-feature vector from a device's rolling window |
 | `detector.py` | Loads `.joblib` model files, runs inference, returns anomaly score |
 | `alerter.py` | Writes `ml_alerts.log`, calls Ryu REST API for CRITICAL alerts |
-| `train/train.py` | Offline training script — run on the host, not in the container |
+| `train/train.py` | Offline training script - run on the host, not in the container |
 
 ## Feature set
 
@@ -33,7 +33,7 @@ Features are computed from a 5-minute rolling window of Zeek log entries per dev
 | `unique_dst_ports` | Unique destination ports |
 | `bytes_sent` | Total originator bytes |
 | `bytes_recv` | Total responder bytes |
-| `bytes_ratio` | `bytes_sent / total` — direction of data flow |
+| `bytes_ratio` | `bytes_sent / total` - direction of data flow |
 | `mean_duration` | Mean connection duration (seconds) |
 | `failed_conn_rate` | Proportion of connections in state S0 or REJ |
 | `tcp_ratio` | Proportion of TCP connections |
@@ -59,7 +59,7 @@ These checks run without a trained model and catch high-confidence attack patter
 
 | Check | CRITICAL threshold | WARNING threshold |
 |-------|--------------------|-------------------|
-| Unique destination ports | ≥ 30 | — |
+| Unique destination ports | ≥ 30 | - |
 | Failed connection rate | ≥ 80% | ≥ 50% |
 | DNS query rate (vs baseline) | ≥ 10× baseline mean | ≥ 2× baseline mean |
 | DNS entropy | ≥ 3.80 bits/char | ≥ 3.50 bits/char |

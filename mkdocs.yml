@@ -52,13 +52,16 @@ nav:
   - Architecture:
     - Overview: architecture/overview.md
     - Network Topology: architecture/network-topology.md
-    - Data Flow: architecture/data-flow.md
+    - Data Flow and Logging: architecture/data-flow.md
     - Traffic Path Sequence Diagram: architecture/traffic-path-sequence-diagrams.md
   - Components:
     - OVS and Ryu: components/ovs-ryu.md
     - Zeek: components/zeek.md
     - AdGuard Home: components/adguard.md
     - ML Pipeline: components/ml-pipeline.md
+    - dnsmasq: components/dnsmasq.md
+    - hostapd: components/hostapd.md
+    - nftables: components/nftables.md
   - Reference:
     - REST API: reference/api.md
     - Configuration: reference/configuration.md
@@ -69,13 +72,13 @@ nav:
     - Alert Response: operations/alert-response.md
     - Log Maintenance: operations/log-maintenance.md
   - Services:
-    - Overview: services/overview.md
+    - Overview: services/services-overview.md
     - Zeek Mirror: services/zeek-mirror.md
     - DNS Cache Updater: services/dns-cache-updater.md
   - Scripts: 
-    - scripts/Scripts.md
-    - scripts/health-check.md
-    - scripts/log-maintenance.md
-    - scripts/profile-builder.md
-    - scripts/verification-scripts.md
+    - Overview: scripts/Scripts.md
+    - Health Check: scripts/health-check.md
+    - Log Maintenance: scripts/log-maintenance.md
+    - Profile Builder: scripts/profile-builder.md
+    - Verification Scripts: scripts/verification-scripts.md
   - Requirements: requirements/Requirements.md

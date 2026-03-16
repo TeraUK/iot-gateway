@@ -37,9 +37,9 @@ All detection scripts are in `zeek/site/iot-detection/`. They are loaded via `__
 
 The shared infrastructure used by all detection scripts. Provides:
 
-- **`emit_alert()`** — writes a structured entry to `iot_alerts.log` and, for CRITICAL alerts with `auto_isolate = T`, calls the Ryu REST API.
-- **IP→MAC resolution** — maintains a `dhcp_table` populated from DHCP events, used to include MAC addresses in alert entries.
-- **`is_iot_device()`** — returns true for IPs in `192.168.50.0/24` that are not the gateway (`192.168.50.1`).
+- **`emit_alert()`** - writes a structured entry to `iot_alerts.log` and, for CRITICAL alerts with `auto_isolate = T`, calls the Ryu REST API.
+- **IP→MAC resolution** - maintains a `dhcp_table` populated from DHCP events, used to include MAC addresses in alert entries.
+- **`is_iot_device()`** - returns true for IPs in `192.168.50.0/24` that are not the gateway (`192.168.50.1`).
 
 **Configuration options** (override in `local.zeek`):
 

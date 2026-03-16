@@ -4,7 +4,7 @@ This section documents every runnable script in the repository. Each entry cover
 
 All scripts in `scripts/` must be run from the repository root. Scripts that interact with OVS, systemd, or Docker must be run as root (`sudo`).
 
-Related but not covered here are the two custom daemons [Services](profile-builder.md)
+Related but not covered here are the two custom daemons [Services](../services/services-overview.md)
 
 ---
 

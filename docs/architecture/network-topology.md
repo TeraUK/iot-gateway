@@ -38,7 +38,7 @@
 | `0.0.0.0:3000` | `3000/tcp` | AdGuard initial setup wizard |
 | `0.0.0.0:8088` | `80/tcp` | AdGuard admin UI |
 
-The Ryu REST API (`8080`) is mapped to all interfaces. On a production deployment this should be restricted to the loopback or a management interface. Currently the nftables policy does not forward packets from the IoT subnet to the Docker bridge, so IoT devices cannot reach the API directly — but this is a configuration dependency rather than a hard rule.
+The Ryu REST API (`8080`) is mapped to all interfaces. On a production deployment this should be restricted to the loopback or a management interface. Currently the nftables policy does not forward packets from the IoT subnet to the Docker bridge, so IoT devices cannot reach the API directly - but this is a configuration dependency rather than a hard rule.
 
 ## Mirror infrastructure
 
@@ -85,7 +85,7 @@ DNS-over-TLS (port 853) and DNS-over-QUIC (port 8853) are blocked at the nftable
 |----------|-----------|-------------|
 | 65535 | Isolation | Per-device DROP rule (dynamic, installed on alert) |
 | 500 | Allowlist | Per-device destination FORWARD rules (Phase 3) |
-| 200 | Essential services | DHCP, DNS, NTP, ARP — universally permitted |
+| 200 | Essential services | DHCP, DNS, NTP, ARP - universally permitted |
 | 150 | Anti-lateral-movement | Drops IoT→IoT traffic via gateway routing |
 | 100 | Per-device intercept | Matches profiled devices in enforcing mode |
 | 50 | General WAN | Allows all devices to reach the internet (Phase 2, overridden by per-device rules) |

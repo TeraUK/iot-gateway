@@ -1,6 +1,6 @@
 # Alert Response
 
-This page covers what to do when an alert fires — how to investigate, decide whether the isolation is justified, and either clear the device or confirm the incident.
+This page covers what to do when an alert fires - how to investigate, decide whether the isolation is justified, and either clear the device or confirm the incident.
 
 ## Alert sources
 
@@ -55,7 +55,7 @@ for mac, info in d['devices'].items():
 
 ## Investigating an alert
 
-### Step 1 — Identify the device
+### Step 1 - Identify the device
 
 Get the MAC address from the alert. Cross-reference against `dnsmasq.leases` to confirm the device identity:
 
@@ -64,7 +64,7 @@ grep "<mac>" /var/lib/misc/dnsmasq.leases
 # Output: <expiry> <mac> <ip> <hostname> <client-id>
 ```
 
-### Step 2 — Understand what triggered the alert
+### Step 2 - Understand what triggered the alert
 
 The `details` field in every alert entry contains JSON-encoded metadata about the specific detection. Parse it to understand the specific values that crossed the threshold.
 
@@ -84,7 +84,7 @@ for line in sys.stdin:
 "
 ```
 
-### Step 3 — Inspect the raw Zeek logs for the device
+### Step 3 - Inspect the raw Zeek logs for the device
 
 ```bash
 # Recent connections from the device
@@ -94,7 +94,7 @@ docker exec zeek grep "<ip-address>" /opt/zeek-logs/conn.log | tail -50 | python
 docker exec zeek grep "<ip-address>" /opt/zeek-logs/dns.log | tail -50 | python3 -m json.tool
 ```
 
-### Step 4 — Cross-check against IOC feeds
+### Step 4 - Cross-check against IOC feeds
 
 If the alert was `known-bad-ip` or `known-bad-domain`, check the IOC file for the description:
 
@@ -109,7 +109,7 @@ grep "<bad-domain>" zeek/site/iot-iocs/known-bad-domains.dat
 
 - The alert fired immediately after a firmware update and the device was contacting update servers.
 - The destination is a known legitimate service that isn't in the allowlist yet (check against the device manufacturer's documentation).
-- The `model_type` in an ML alert is `fleet` — the fleet model is less accurate than a per-device model and more likely to produce false positives for devices with unusual-but-legitimate traffic patterns.
+- The `model_type` in an ML alert is `fleet` - the fleet model is less accurate than a per-device model and more likely to produce false positives for devices with unusual-but-legitimate traffic patterns.
 - The detected anomaly matches a known benign event (e.g., a bulk backup that runs nightly).
 
 ### Indicators of a genuine incident

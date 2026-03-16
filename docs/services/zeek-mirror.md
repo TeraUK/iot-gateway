@@ -92,7 +92,7 @@ docker exec zeek ip link show zeek-eth1
 docker exec zeek ls -lh /opt/zeek-logs/
 ```
 
-The `verify-phase4.sh` script performs all of these checks automatically. See [Scripts Reference](../scripts/Scripts.md#verify-phase4sh).
+The `verify-phase4.sh` script performs all of these checks automatically. See [Scripts Reference](../scripts/verification-scripts.md).
 
 ## Behaviour on failure
 

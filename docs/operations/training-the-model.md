@@ -74,8 +74,8 @@ If the training data was collected before detection was fully operational, consi
 
 After deploying new models, run the pipeline in dry-run mode (`ML_AUTO_ISOLATE=false`, which is the default) and monitor `ml_alerts.log` for at least one week. Look for:
 
-- **False positives on normal traffic** — a device being scored as CRITICAL during its normal usage pattern. If this happens, check whether the model had enough training data or whether the `critical_threshold` in `thresholds.yml` needs to be raised.
-- **Expected alerts** — intentionally generate some anomalous traffic (e.g., a port scan from a test device) and verify it produces a CRITICAL alert.
+- **False positives on normal traffic** - a device being scored as CRITICAL during its normal usage pattern. If this happens, check whether the model had enough training data or whether the `critical_threshold` in `thresholds.yml` needs to be raised.
+- **Expected alerts** - intentionally generate some anomalous traffic (e.g., a port scan from a test device) and verify it produces a CRITICAL alert.
 
 Once satisfied with the false positive rate, enable auto-isolation:
 

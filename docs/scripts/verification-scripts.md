@@ -33,10 +33,10 @@ sudo ./scripts/verify-phase1.sh
 
 **Common failures and fixes:**
 
-- `AdGuard Home container is not running` — run `docker compose up -d` and check `docker logs adguard-home` for startup errors.
-- `DNS DNAT rule not found` — the nftables ruleset is not loaded. Run `sudo systemctl start nftables` and verify with `sudo nft list ruleset`.
-- `doubleclick.net resolved to <IP>` — the blocklist has not synchronised yet. Open the AdGuard admin UI at `http://<host>:8088`, go to Filters, and trigger a manual update.
-- `Log maintenance cron job not found` — install it with `sudo crontab -e` and add `0 3 * * * /usr/local/bin/log-maintenance.sh >> /var/log/gateway-maintenance.log 2>&1`. The `install.sh` script does this automatically.
+- `AdGuard Home container is not running` - run `docker compose up -d` and check `docker logs adguard-home` for startup errors.
+- `DNS DNAT rule not found` - the nftables ruleset is not loaded. Run `sudo systemctl start nftables` and verify with `sudo nft list ruleset`.
+- `doubleclick.net resolved to <IP>` - the blocklist has not synchronised yet. Open the AdGuard admin UI at `http://<host>:8088`, go to Filters, and trigger a manual update.
+- `Log maintenance cron job not found` - install it with `sudo crontab -e` and add `0 3 * * * /usr/local/bin/log-maintenance.sh >> /var/log/gateway-maintenance.log 2>&1`. The `install.sh` script does this automatically.
 
 ---
 
@@ -63,10 +63,10 @@ sudo ./scripts/verify-phase2.sh
 
 **Common failures and fixes:**
 
-- `OVS switch is NOT connected to Ryu` — Ryu may still be initialising. Wait 30 seconds and re-run. If it persists, check `docker logs ryu-controller` for errors. Verify the controller is set with `ovs-vsctl get-controller br0`.
-- `Proactive rules are NOT installed` — the gateway policy app started but the OVS connection was not established when Ryu tried to install rules. Restart the Ryu container: `docker compose restart ryu`.
-- `Default deny rule not found` — the flow table is in an unexpected state. Check `sudo ovs-ofctl dump-flows br0 -O OpenFlow13` for the full rule set and restart Ryu if rules are missing.
-- `WiFi port was not discovered` — `wlp3s0` is not in the OVS bridge. Add it with `sudo ovs-vsctl add-port br0 wlp3s0`.
+- `OVS switch is NOT connected to Ryu` - Ryu may still be initialising. Wait 30 seconds and re-run. If it persists, check `docker logs ryu-controller` for errors. Verify the controller is set with `ovs-vsctl get-controller br0`.
+- `Proactive rules are NOT installed` - the gateway policy app started but the OVS connection was not established when Ryu tried to install rules. Restart the Ryu container: `docker compose restart ryu`.
+- `Default deny rule not found` - the flow table is in an unexpected state. Check `sudo ovs-ofctl dump-flows br0 -O OpenFlow13` for the full rule set and restart Ryu if rules are missing.
+- `WiFi port was not discovered` - `wlp3s0` is not in the OVS bridge. Add it with `sudo ovs-vsctl add-port br0 wlp3s0`.
 
 ---
 
@@ -95,9 +95,9 @@ sudo ./scripts/verify-phase3.sh
 
 **Common failures and fixes:**
 
-- `No device profiles loaded` — `device_profiles.json` is missing or empty. Generate it with `profile_builder.py` (see below), review it, then reload with `curl -X POST http://127.0.0.1:8080/policy/allowlists/reload`.
-- `DNS cache is empty` — the `dns-cache-updater.service` is not running or Zeek has not yet produced DNS log entries. Check with `sudo systemctl status dns-cache-updater` and `sudo journalctl -u dns-cache-updater -n 50`.
-- `dns-cache-updater service is not installed` — run `sudo ./install.sh` to deploy the service, or install it manually following the instructions in `Services/dns-cache-updater/DNS-Cache-Updater.md`.
+- `No device profiles loaded` - `device_profiles.json` is missing or empty. Generate it with `profile_builder.py` (see below), review it, then reload with `curl -X POST http://127.0.0.1:8080/policy/allowlists/reload`.
+- `DNS cache is empty` - the `dns-cache-updater.service` is not running or Zeek has not yet produced DNS log entries. Check with `sudo systemctl status dns-cache-updater` and `sudo journalctl -u dns-cache-updater -n 50`.
+- `dns-cache-updater service is not installed` - run `sudo ./install.sh` to deploy the service, or install it manually following the instructions in `Services/dns-cache-updater/DNS-Cache-Updater.md`.
 
 ---
 
@@ -125,9 +125,9 @@ sudo ./scripts/verify-phase4.sh
 
 **Common failures and fixes:**
 
-- `iot-detection directory not found` — the Zeek container started before the volume mount was ready. Restart Zeek: `docker compose restart zeek`.
-- `Host-side veth (zeek-veth-h) not found` — the Zeek mirror service has not attached the veth pair. Check `sudo systemctl status zeek-mirror` and `sudo journalctl -u zeek-mirror -n 50`.
-- `OVS mirror not configured` — the zeek-mirror service ran but the OVS mirror creation failed. Check `ovs-vsctl list mirror` and restart the service: `sudo systemctl restart zeek-mirror`.
-- `POST /policy/isolate is not responding` — Ryu is not running or its REST API is not accessible. Check `docker logs ryu-controller`.
+- `iot-detection directory not found` - the Zeek container started before the volume mount was ready. Restart Zeek: `docker compose restart zeek`.
+- `Host-side veth (zeek-veth-h) not found` - the Zeek mirror service has not attached the veth pair. Check `sudo systemctl status zeek-mirror` and `sudo journalctl -u zeek-mirror -n 50`.
+- `OVS mirror not configured` - the zeek-mirror service ran but the OVS mirror creation failed. Check `ovs-vsctl list mirror` and restart the service: `sudo systemctl restart zeek-mirror`.
+- `POST /policy/isolate is not responding` - Ryu is not running or its REST API is not accessible. Check `docker logs ryu-controller`.
 
 ---

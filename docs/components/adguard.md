@@ -4,7 +4,7 @@ AdGuard Home provides DNS filtering (POL-03). It runs as a Docker container with
 
 ## Role in the architecture
 
-AdGuard sits at the end of the nftables DNAT chain. Every DNS query from an IoT device — regardless of the target DNS server configured on the device — is redirected to `172.20.0.53:53` by nftables before leaving the host. AdGuard then:
+AdGuard sits at the end of the nftables DNAT chain. Every DNS query from an IoT device - regardless of the target DNS server configured on the device - is redirected to `172.20.0.53:53` by nftables before leaving the host. AdGuard then:
 
 1. Checks the query against its blocklists.
 2. If blocked, returns `0.0.0.0` (or NXDOMAIN depending on configuration).
@@ -16,8 +16,8 @@ This means devices with hardcoded DNS servers (`8.8.8.8`, `1.1.1.1`, etc.) are s
 
 Devices cannot bypass AdGuard by using encrypted DNS protocols directly:
 
-- **DoT (port 853)** — blocked by nftables `tcp dport 853 drop`
-- **DoQ (port 8853)** — blocked by nftables `udp dport 8853 drop`
+- **DoT (port 853)** - blocked by nftables `tcp dport 853 drop`
+- **DoQ (port 8853)** - blocked by nftables `udp dport 8853 drop`
 
 DoH (DNS-over-HTTPS, port 443) cannot be blocked without disrupting legitimate HTTPS traffic. However, since all HTTPS traffic passes through the allowlist and nftables NAT, and since allowed DoH providers would need to be in a device's allowlist, this is an acceptable limitation.
 
@@ -25,9 +25,9 @@ DoH (DNS-over-HTTPS, port 443) cannot be blocked without disrupting legitimate H
 
 I use a combination of:
 
-- **General ad and tracking blocklists** — block analytics, advertising, and fingerprinting domains across all devices.
-- **IoT-specific blocklists** — target manufacturer telemetry, firmware phone-home domains, and analytics endpoints commonly used by consumer IoT devices.
-- **Threat intelligence feeds** — include known C2 infrastructure, malware distribution, and phishing domains.
+- **General ad and tracking blocklists** - block analytics, advertising, and fingerprinting domains across all devices.
+- **IoT-specific blocklists** - target manufacturer telemetry, firmware phone-home domains, and analytics endpoints commonly used by consumer IoT devices.
+- **Threat intelligence feeds** - include known C2 infrastructure, malware distribution, and phishing domains.
 
 Blocklists are configured via the AdGuard admin UI at `http://<gateway-host>:8088`. They should be reviewed and updated monthly.
 
@@ -49,7 +49,7 @@ The query log is configured for 90-day retention (`2160h`) in `adguard/conf/AdGu
 From a connected IoT device (or a device simulating one):
 
 ```bash
-# Query using a hardcoded external DNS server — should still be blocked
+# Query using a hardcoded external DNS server - should still be blocked
 dig @8.8.8.8 doubleclick.net
 
 # Should return 0.0.0.0 or NXDOMAIN (blocked by AdGuard)

@@ -51,15 +51,15 @@ Ryu runs as a Docker container. The `gateway_policy.py` application is the only 
 
 On switch connection, the app installs proactive flow rules in this order:
 
-1. **Table-miss** (priority 0) — unmatched packets go to the controller.
-2. **Default deny** (priority 1) — drop everything not explicitly allowed.
-3. **ARP** (priority 200) — permit ARP between devices and the gateway.
-4. **DHCP** (priority 200) — permit DHCP broadcasts to `192.168.50.1`.
-5. **DNS** (priority 200) — permit DNS queries to `192.168.50.1` (intercepted by nftables to AdGuard).
-6. **NTP** (priority 200) — permit NTP queries and responses.
-7. **Anti-lateral-movement** (priority 150) — drop any IPv4 traffic from `wlp3s0` destined for `192.168.50.0/24`. This prevents IoT devices from reaching each other even if they try to bypass the gateway.
-8. **General WAN access** (priority 50) — allow all IPv4 traffic in and out (overridden by per-device intercept rules in Phase 3).
-9. **Per-device intercept** (priority 100, enforcing mode only) — for profiled devices, send unmatched flows to the controller to check against the allowlist before installing a forward or drop rule.
+1. **Table-miss** (priority 0) - unmatched packets go to the controller.
+2. **Default deny** (priority 1) - drop everything not explicitly allowed.
+3. **ARP** (priority 200) - permit ARP between devices and the gateway.
+4. **DHCP** (priority 200) - permit DHCP broadcasts to `192.168.50.1`.
+5. **DNS** (priority 200) - permit DNS queries to `192.168.50.1` (intercepted by nftables to AdGuard).
+6. **NTP** (priority 200) - permit NTP queries and responses.
+7. **Anti-lateral-movement** (priority 150) - drop any IPv4 traffic from `wlp3s0` destined for `192.168.50.0/24`. This prevents IoT devices from reaching each other even if they try to bypass the gateway.
+8. **General WAN access** (priority 50) - allow all IPv4 traffic in and out (overridden by per-device intercept rules in Phase 3).
+9. **Per-device intercept** (priority 100, enforcing mode only) - for profiled devices, send unmatched flows to the controller to check against the allowlist before installing a forward or drop rule.
 
 ### Enforcement modes
 
