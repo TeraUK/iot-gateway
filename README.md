@@ -1,8 +1,28 @@
 # IoT Security Gateway running on an Ubuntu mini PC. 
 
-## Architecture Diagram
+## What the gateway does
 
-At this point in time the WAN uplink is managed automatically by systemd.networkd, as defined in netplan config. **The WAN interface will be moved into OVS in the future.**
+Consumer IoT devices are high-risk network participants. They run outdated firmware, have no endpoint security capabilities, and communicate with a mix of legitimate cloud services and potentially unwanted telemetry endpoints. The gateway addresses this by treating every IoT device as untrusted by default and enforcing the policy at the network layer, regardless of the device's own behaviour.
+
+The key capabilities are:
+
+- **Default-deny network isolation** - all traffic is dropped unless an explicit OpenFlow rule permits it.
+- **Micro-segmentation** - IoT devices cannot communicate with each other directly.
+- **Per-device destination allowlists** - each device is restricted to the destinations it legitimately needs.
+- **Forced DNS filtering** - all DNS queries are intercepted and processed by AdGuard Home, including from devices with hardcoded resolvers.
+- **Passive traffic analysis** - Zeek monitors all traffic and runs rule-based detection scripts in real time.
+- **Automated device isolation** - devices exhibiting malicious or anomalous behaviour are automatically quarantined via SDN flow rules.
+- **ML-based anomaly detection** - an Isolation Forest pipeline detects behavioural deviations that rule-based scripts may miss.
+
+## Installation and Documentation
+
+The recommended operating system is **Ubuntu Server 24.04.4 LTS**
+
+To build the documentation, run **installation/build-docs.sh**
+
+To install the gateway, run **installation/install.sh**
+
+## Architecture Diagram
 
 ![Diagram of High Level Architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/TeraUK/iot-gateway/refs/heads/main/architecture-diagram.puml)
 
