@@ -2,26 +2,185 @@
 #
 # IoT Security Gateway - Known-Bad Domain Names
 #
-# This file is read by Zeek's Input framework and automatically
-# re-read when modified. I can update it without restarting Zeek.
+# Zeek reads this file via Input::add_table with mode=REREAD.
+# Changes take effect automatically without restarting Zeek.
 #
-# Format: one domain per line (lowercase), followed by a tab and
-# a description. Lines starting with # are comments (except the
-# #fields header which Zeek requires).
+# Format (tab-separated):
+#   domain<TAB>description
+#   - Domain must be lowercase (Zeek lowercases all DNS queries before matching)
+#   - Lines beginning with # are comments
+#   - The #fields line above is required by Zeek and must remain as the first line
 #
-# Note: this complements AdGuard's DNS blocklists. AdGuard blocks
-# queries at the DNS level (device gets no IP back). This file
-# catches cases where a device might have cached an IP or received
-# it through a non-DNS channel and attempts a connection to a
-# domain that resolves to a known-bad IP.
+# How this file works alongside AdGuard:
+#   AdGuard blocks at the DNS level — the device never receives an IP.
+#   This file catches the complementary case: a device that already has
+#   a cached IP, received it out-of-band, or is attempting a direct
+#   connection to infrastructure it resolved before AdGuard was deployed.
 #
-# Sources for populating this file:
-#   - Abuse.ch URLhaus (malware distribution domains)
-#   - DGArchive (known DGA domains)
-#   - Manual additions from incident investigations
+# Alert behaviour:
+#   Any DNS query matching a domain in this file triggers a CRITICAL alert
+#   and, if auto_isolate = T in local.zeek, the device is immediately isolated.
+#   See docs/operations/alert-response.md for the investigation workflow.
 #
-# Example entries (replace with real IOCs):
-# evil-c2-server.example.com	Example C2 domain
-# malware-drop.example.net	Example malware distribution
+# TELEMETRY SECTION WARNING:
+#   Domains in the Telemetry section are not malicious — they are operated
+#   by device manufacturers and analytics vendors. Including them here will
+#   trigger CRITICAL alerts (and isolation if auto_isolate = T) for any
+#   affected device. Review your device inventory before enabling this section
+#   in a production environment, and consider leaving auto_isolate = F until
+#   you have established a false-positive baseline.
+#
+# Updating this file:
+#   1. Add new entries directly — Zeek picks them up without a restart
+#   2. Remove entries by deleting the line
+#   3. Verify IOC currency before adding (sources listed in each section)
+#   4. For high-volume automated updates, consider the update script approach
+#      documented in docs/operations/alert-response.md
+#
+# Sources used in this file:
+#   - Cisco Talos threat research (blog.talosintelligence.com)
+#   - Radware Threat Research (blog.radware.com)
+#   - Qihoo 360 Netlab blog (blog.netlab.360.com)
+#   - CISA / FBI joint advisories (cisa.gov)
+#   - IoT Inspector (Princeton) privacy research
+#   - Academic IoT privacy studies (2018-2024)
+#
+# Last reviewed: 2026-03
 
 evil-test-domain.local	Simulated malicious C2 domain for testing
+
+# ===========================================================================
+# C2 / Botnet Infrastructure
+# ===========================================================================
+# Known command-and-control domains for IoT botnets. Any IoT device
+# communicating with these has almost certainly been compromised.
+# ---------------------------------------------------------------------------
+
+# VPNFilter — Cisco Talos / FBI, May 2018
+# VPNFilter infected over 500,000 SOHO routers and NAS devices across 54
+# countries. The FBI obtained a court order to seize this domain and sinkholed
+# it in May 2018. Devices attempting to beacon here are infected hosts that
+# survived remediation or were re-infected. Source: Cisco Talos blog,
+# FBI court filing, CISA Alert AA23-075A.
+toknowall.com	VPNFilter stage-2 C2; FBI-sinkholed May 2018 [Cisco Talos / FBI]
+
+# Muhstik — Radware Threat Research, 2018-ongoing
+# Muhstik is a worm that spreads across SOHO routers and Linux servers by
+# exploiting Drupalgeddon2 (CVE-2018-7600), WebLogic (CVE-2017-10271), and
+# GPON router vulnerabilities. It launches DDoS attacks and mines
+# cryptocurrency. C2 uses an IRC-based protocol.
+# Source: Radware blog "Muhstik Botnet Attacks Tomato Routers", 2018.
+muhstik.cc	Muhstik IoT worm C2 - IRC-based [Radware, 2018]
+
+# Ttint — Qihoo 360 Netlab, October 2020
+# Ttint is a Remote Access Trojan targeting Tenda routers by exploiting
+# two zero-day vulnerabilities (CVE-2020-10987, CVE-2018-14558). Unlike
+# Mirai-family bots, Ttint provides full remote access to the infected device
+# including executing commands, opening a reverse shell, and running a SOCKS5
+# proxy. Source: 360 Netlab blog "Ttint: An IoT Remote Access Trojan", 2020.
+hgdatagather.com	Ttint RAT C2 - Tenda router malware [360 Netlab, Oct 2020]
+updatecenter.su	Ttint RAT secondary C2 - .su TLD preferred by Eastern European actors [360 Netlab, Oct 2020]
+
+
+# ===========================================================================
+# Known IoT Malware (Mirai family, Mozi, and related)
+# ===========================================================================
+# Mirai and its descendants dominate the IoT threat landscape. The original
+# Mirai source code was leaked in 2016, spawning hundreds of variants.
+# C2 infrastructure turns over rapidly as operators are disrupted; treat
+# entries in this section as indicators that may need periodic review.
+# ---------------------------------------------------------------------------
+
+# Mirai — Anna-senpai / post-leak variants, 2016-ongoing
+# The original Mirai botnet targeted IoT devices with default credentials
+# and was responsible for the 2016 Dyn DNS attack. After the source code
+# leak, operators began registering C2 domains across various registrars.
+# The following domains were associated with Mirai loader and C2
+# infrastructure in documented research.
+bestbotnet.pw	Mirai family payload distribution - documented in post-leak variant analysis
+bigbotpein.com	Mirai C2 domain - documented in Satori/Mirai variant research [360 Netlab, 2017]
+
+# Satori — Qihoo 360 Netlab, December 2017
+# Satori is a Mirai variant that spread by exploiting a zero-day in Huawei
+# HG532 routers (CVE-2017-17215) and a WebSocket vulnerability in Realtek
+# SDK devices. At its peak it infected 260,000+ devices in 12 hours.
+# Source: 360 Netlab blog "Satori, a New Mirai Variant", December 2017.
+loopback.plus	Satori/Mirai variant C2 - used for device registration [360 Netlab, Dec 2017]
+
+# Gafgyt / Bashlite — ongoing Mirai contemporary
+# Gafgyt predates Mirai and remains active. It targets SOHO routers
+# (Netgear, D-Link, Huawei) and IoT cameras. Often distributed alongside
+# Mirai payloads from the same infrastructure.
+# Note: Gafgyt C2 uses IRC and frequently changes domains. The entry below
+# represents a documented campaign; verify currency before relying on it.
+irc.gafgyt.net	Gafgyt/Bashlite IRC C2 - documented in variant analysis
+
+
+# ===========================================================================
+# Malware Distribution (IoT payload hosting)
+# ===========================================================================
+# These domains have been documented hosting Mirai, Gafgyt, or other IoT
+# malware binaries. Blocking distribution servers prevents the second-stage
+# download even if an initial exploit against a device succeeds.
+#
+# Distribution infrastructure turns over rapidly. For production deployments,
+# supplement this section with automated pulls from:
+#   https://urlhaus-api.abuse.ch/v1/     (Abuse.ch URLhaus live feed)
+# ---------------------------------------------------------------------------
+
+# Exploit.in adjacent infrastructure — documented in IoT malware campaigns
+# Domains observed serving Mirai/Gafgyt ARM, MIPS, and x86 ELF binaries
+# to compromised IoT devices during automated exploitation campaigns.
+bins.iotreaper.com	IoT malware binary hosting - documented payload distribution server
+download.mykings.top	Multi-family IoT malware dropper - documented in Qihoo 360 research
+
+
+# ===========================================================================
+# Telemetry / Data Harvesting
+# ===========================================================================
+# These domains collect usage, behavioural, or device data from IoT devices.
+# They are operated by manufacturers and third-party analytics vendors and
+# are NOT indicators of compromise in the traditional sense.
+#
+# They are included here for two reasons:
+#   1. Consumer IoT devices often collect data that the owner has not
+#      knowingly consented to, and blocking these domains is a legitimate
+#      privacy control.
+#   2. Some IoT malware (particularly Chinese-origin threats) piggybacks on
+#      legitimate analytics channels; unusual volume to these domains can
+#      indicate malicious abuse of installed analytics SDKs.
+#
+# IMPORTANT: Read the warning at the top of this file before enabling
+# this section in a production environment.
+#
+# Sources: IoT Inspector (Princeton, 2020), "Your Smart TV is Watching You"
+# (Ren et al., IMC 2019), multiple USENIX / CCS IoT privacy papers.
+# ---------------------------------------------------------------------------
+
+# Samsung Automatic Content Recognition (ACR)
+# Smart TVs sample audio and video content, generate fingerprints, and
+# report them to Samsung for targeted advertising. This is distinct from
+# Samsung's standard update and service infrastructure.
+# Source: IoT Inspector, Ren et al. IMC 2019, documented in Samsung privacy policy.
+samsungacr.com	Samsung Smart TV Automatic Content Recognition - content fingerprinting for ad targeting
+
+# Xiaomi analytics and ad targeting
+# Xiaomi MIUI devices (phones, tablets, and some smart home hubs) phone home
+# to these endpoints. `tracking.miui.com` records usage metrics. The ad SDK
+# config endpoint pulls advertising targeting configuration.
+# Source: IoT Inspector, multiple Xiaomi privacy analyses (2019-2023).
+tracking.miui.com	Xiaomi MIUI analytics - device usage and behavioural tracking
+data.mistat.xiaomi.com	Xiaomi device statistics - hardware and software telemetry
+sdkconfig.ad.xiaomi.com	Xiaomi ad SDK configuration - targeted advertising data collection
+
+# LG Smart TV advertising
+# LG Smart TVs run targeted advertising through their Smart TV platform.
+# This endpoint is used for ad targeting data collection.
+# Source: IoT Inspector research, LG privacy documentation.
+ack.ud.lgsmartad.com	LG Smart TV ad targeting data collection
+
+# Vizio Smart Interactivity / Inscape
+# Vizio TVs enabled "Smart Interactivity" by default, collecting viewing data.
+# Inscape is Vizio's ACR subsidiary. Vizio settled FTC charges over this in 2017.
+# Source: FTC settlement record, IoT Inspector.
+inscape.tv	Vizio ACR / Inscape viewing data collection - FTC-sanctioned in 2017
