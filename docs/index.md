@@ -33,7 +33,7 @@ title **IoT Security Gateway Architecture**\nSDN-Based Hybrid Native/Containeris
 ' == External Entities ==
 
 node "**Internet**" as internet #E0E0E0
-node "**Upstream Router**\n(Home Network)" as router #E0E0E0
+node "**Upstream Router**\n(Home/Corporate Network)" as router #E0E0E0
 node "**IoT Devices**\n(Smart Bulbs, Thermostats,\nCameras, etc.)" as iot_devices #E0E0E0
 
 ' == Host System ==
@@ -48,7 +48,7 @@ package "**Mini PC Host** - Ubuntu Server 24.04 LTS  /  Intel i5-12500T  /  16 G
         component "**wlp3s0**\nWiFi Radio (OVS Port)" as wlan0
         component "**hostapd**\nWiFi AP: IoT-Security-AP\nWPA2-PSK (CCMP)" as hostapd
         component "**dnsmasq**\nDHCP Only (DNS disabled)\nRange: .50-.150" as dnsmasq
-        component "**nftables**\nNAT masquerade\nDNS DNAT to 172.20.0.53" as nftables
+        component "**nftables**\nNAT masquerade\nDNS DNAT to 172.20.0.53\nBlocks DoT (853) + DoQ (8853)" as nftables
     }
 
     ' == Docker Layer ==
@@ -59,13 +59,14 @@ package "**Mini PC Host** - Ubuntu Server 24.04 LTS  /  Intel i5-12500T  /  16 G
             component "**Ryu SDN Controller**\n172.20.0.x\nOpenFlow: 6653\nREST API: 8080" as ryu
             component "**AdGuard Home**\n172.20.0.53 (static)\nDNS: 53 (TCP/UDP)\nAdmin: host:8088" as adguard
             component "**Zeek**\n172.20.0.x\nPassive Analysis\nMirror: zeek-eth1" as zeek
-            component "**ML Pipeline**\n172.20.0.x\nAnomaly Detection" as ml_pipeline
+            component "**ML Pipeline**\n172.20.0.x\nIsolation Forest (per-device)\nLSTM (per-device-type)" as ml_pipeline
         }
     }
 
     ' == Shared Resources ==
 
-    database "**zeek-logs**\n(Docker Volume)\nconn.log, dns.log\nhttp.log, ssl.log" as zeek_vol #C8E6C9
+    database "**zeek-logs**\n(Docker Volume)\nconn.log, dns.log, http.log\niot_alerts.log, ml_alerts.log" as zeek_vol #C8E6C9
+    database "**adguard-data**\n(Docker Volume)\nquerylog.json" as adguard_vol #C8E6C9
     component "**zeek-mirror.service**\n(systemd watcher)" as mirror_svc #FFCDD2
 }
 
@@ -104,6 +105,11 @@ mirror_svc ..> zeek : Manages veth\nlifecycle
 
 zeek --> zeek_vol : Writes logs
 zeek_vol --> ml_pipeline : Reads logs
+ml_pipeline --> zeek_vol : Writes ml_alerts.log
+
+' == AdGuard Logging ==
+
+adguard --> adguard_vol : Writes querylog.json
 
 ' == Analysis to Control Plane ==
 
@@ -115,13 +121,13 @@ ml_pipeline --> ryu : REST API POST :8080\n(anomaly response)
 legend bottom left
     |= Colour |= Meaning |
     | <#BBDEFB> | Native host component |
-    | <#FFF3E0> | Containerised application |
-    | <#E1BEE7> | Docker network |
+    | <#E1BEE7> | Docker network / containerised application |
     | <#C8E6C9> | Shared storage |
     | <#FFCDD2> | System service |
 endlegend
 
-@enduml                                                                             
+@enduml
+                                                                        
 ```
 
 All mirrored traffic from OVS passes through Zeek for analysis. Zeek and the ML pipeline both call the Ryu REST API to isolate devices when their detection criteria are met.

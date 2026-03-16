@@ -15,16 +15,16 @@ The workflow:
 
 Usage:
     # Analyse logs and print a summary to stdout:
-    python3 profile_builder.py --zeek-dir /path/to/zeek-logs
+    python3 profile_builder.py --zeek-dir /opt/zeek-logs
 
     # Generate a draft profiles file:
-    python3 profile_builder.py --zeek-dir /path/to/zeek-logs --output draft_profiles.json
+    python3 profile_builder.py --zeek-dir /opt/zeek-logs --output draft_profiles.json
 
     # Only analyse a specific device:
-    python3 profile_builder.py --zeek-dir /path/to/zeek-logs --mac aa:bb:cc:dd:ee:ff
+    python3 profile_builder.py --zeek-dir /opt/zeek-logs --mac aa:bb:cc:dd:ee:ff
 
     # Use the DHCP lease file to map IPs to MACs:
-    python3 profile_builder.py --zeek-dir /path/to/zeek-logs --leases /var/lib/misc/dnsmasq.leases
+    python3 profile_builder.py --zeek-dir /opt/zeek-logs --leases /var/lib/misc/dnsmasq.leases
 """
 
 import argparse

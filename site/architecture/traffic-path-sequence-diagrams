@@ -1,0 +1,457 @@
+# UML Sequence Diagram Showing IoT Traffic Paths
+
+## What these diagrams show
+
+A single sequence diagram covering the entire traffic path would either be too cluttered to read or too simple to be of any use. The architecture has many components, with specific behaviour for different scenarious, leading to multiple potential traffic paths through the system. The four diagrams below tell a complete story for four different scenarios: 
+
+- **DNS query** - Shows the forced DNAT interception through nftables to AdGuard, including the blocked domain case.
+- **Permitted WAN connection** - Shows the Phase 3 allowlist intercept, Ryu evaluation, reactive flow rule installation, and masquerade out to the internet.
+- **Blocked connection attempt** - Shows the same intercept path but where the destination is not in the allowlist, with the denied-log entry.
+- **Detection and automated isolation** - showing Zeek receiving mirrored traffic, a detection script firing, and the Ryu isolation API call installing the priority-65535 drop rule.
+
+```kroki-plantuml
+@startuml dns_query
+
+title DNS Query — Forced Interception via AdGuard Home
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 220
+skinparam sequenceArrowThickness 1.5
+skinparam roundCorner 6
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam participant {
+    BackgroundColor #EAF1F8
+    BorderColor     #1F4E79
+    FontColor       #1F4E79
+    FontStyle       bold
+}
+
+skinparam sequence {
+    ArrowColor            #1F4E79
+    LifeLineBorderColor   #1F4E79
+    LifeLineBackgroundColor #FAFAFA
+    GroupBorderColor      #888888
+    GroupBackgroundColor  #F5F5F5
+    GroupFontColor        #333333
+    DividerBackgroundColor #EAF1F8
+    DividerBorderColor    #1F4E79
+}
+
+skinparam note {
+    BackgroundColor #FFF8DC
+    BorderColor     #C8A800
+}
+
+participant "IoT Device"         as dev
+participant "Open vSwitch (br0)" as ovs
+participant "nftables"           as nft   #D5E8D4
+participant "Zeek"               as zeek  #E1D5E7
+participant "AdGuard Home"       as adg   #D5E8D4
+participant "Upstream DNS"       as dns   #F5F5F5
+
+note over dev
+  Device may have a hardcoded
+  resolver (e.g. 8.8.8.8).
+  It does not matter — all DNS
+  is intercepted regardless.
+end note
+
+dev  -> ovs  : UDP src:DEVICE_IP dst:ANY port 53\n(DNS query)
+
+note over ovs
+  Priority-200 DNS rule permits
+  DNS to gateway IP (192.168.50.1).
+  Packet forwarded to OFPP_LOCAL
+  (host IP stack).
+end note
+
+ovs  --> zeek : [Mirror copy] DNS query
+
+ovs  -> nft   : DNS query arrives at host IP stack
+
+note over nft
+  prerouting DNAT rule:
+  if src in 192.168.50.0/24
+  and dst != 192.168.50.1
+  → dnat to 172.20.0.53
+  Catches hardcoded resolvers.
+end note
+
+nft  -> adg   : DNS query\n(redirected to AdGuard)
+
+alt Domain is on a blocklist
+
+    adg  -> nft  : NXDOMAIN response
+    nft  -> ovs  : NXDOMAIN response
+    ovs  -> dev  : NXDOMAIN response
+    note over zeek
+      Zeek logs the DNS query
+      and the NXDOMAIN response
+      to dns.log.
+    end note
+
+else Domain is permitted
+
+    adg  -> dns  : Recursive lookup\n(via Cloudflare fallback if needed)
+    dns  -> adg  : Resolved IP address
+    adg  -> nft  : DNS response with resolved IP
+    nft  -> ovs  : DNS response
+    ovs  -> dev  : DNS response\n(resolved IP returned to device)
+    note over zeek
+      Zeek logs the query and
+      successful response to dns.log.
+      The resolved IP is added to the
+      DNS cache used by the allowlist
+      enforcer in Ryu.
+    end note
+
+end
+
+@enduml
+                                                                           
+```
+```kroki-plantuml
+@startuml permitted_wan
+
+title Permitted WAN Connection — Per-Device Allowlist Enforcement (Enforcing Mode)
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 220
+skinparam sequenceArrowThickness 1.5
+skinparam roundCorner 6
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam participant {
+    BackgroundColor #EAF1F8
+    BorderColor     #1F4E79
+    FontColor       #1F4E79
+    FontStyle       bold
+}
+
+skinparam sequence {
+    ArrowColor            #1F4E79
+    LifeLineBorderColor   #1F4E79
+    LifeLineBackgroundColor #FAFAFA
+    GroupBorderColor      #888888
+    GroupBackgroundColor  #F5F5F5
+    GroupFontColor        #333333
+    DividerBackgroundColor #EAF1F8
+    DividerBorderColor    #1F4E79
+}
+
+skinparam note {
+    BackgroundColor #FFF8DC
+    BorderColor     #C8A800
+}
+
+participant "IoT Device"         as dev
+participant "Open vSwitch (br0)" as ovs
+participant "Ryu Controller"     as ryu   #D5E8D4
+participant "Zeek"               as zeek  #E1D5E7
+participant "nftables"           as nft   #D5E8D4
+participant "Internet"           as inet  #F5F5F5
+
+dev -> ovs : TCP SYN\nsrc:DEVICE_IP dst:PERMITTED_IP
+
+note over ovs
+  Priority-100 per-device intercept
+  rule matches. Packet sent to
+  controller (packet-in). The general
+  WAN rule at priority 50 is not
+  reached for profiled devices.
+end note
+
+ovs --> zeek : [Mirror copy] TCP SYN
+
+ovs -> ryu : OpenFlow Packet-In\n(first packet from this device\nto this destination)
+
+note over ryu
+  Ryu evaluates the destination IP
+  against the device's allowlist profile
+  loaded from device_profiles.json.
+  DNS cache supplies IPs resolved
+  from domain-based allowlist entries.
+end note
+
+ryu -> ryu : Check DEVICE_MAC\nagainst device_profiles.json\nDestination IP is in allowed_cidrs\nor matches an allowed_domain → PERMIT
+
+ryu -> ovs : OFPFlowMod — install priority-500\nforward rule for this\nDEVICE_MAC + DEST_IP pair\n(with idle timeout)
+
+note over ovs
+  Subsequent packets in this flow
+  match the priority-500 rule directly
+  and are forwarded without involving
+  the controller again.
+end note
+
+ovs -> nft : TCP SYN forwarded\nvia OFPP_LOCAL\n(host IP stack)
+
+note over nft
+  postrouting masquerade rule:
+  src 192.168.50.0/24 out via enp2s0
+  → rewrite src to WAN IP.
+end note
+
+nft -> inet : TCP SYN\n(masqueraded src: WAN_IP)
+inet -> nft : TCP SYN-ACK
+nft -> ovs  : TCP SYN-ACK\n(de-masqueraded)
+ovs -> dev  : TCP SYN-ACK
+
+note over dev, inet
+  Connection established.
+  Subsequent packets match the
+  installed priority-500 flow rule
+  and are forwarded without further
+  controller involvement.
+end note
+
+loop Established session traffic
+
+    dev  -> ovs  : Data packet
+    ovs --> zeek : [Mirror copy]
+    ovs  -> nft  : Forward via OFPP_LOCAL
+    nft  -> inet : Outbound data\n(masqueraded)
+    inet -> nft  : Inbound response
+    nft  -> ovs  : Response
+    ovs  -> dev  : Response
+
+end
+
+@enduml
+                                                                   
+```
+```kroki-plantuml
+@startuml blocked_connection
+
+title Blocked Connection Attempt — Destination Not in Device Allowlist
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 220
+skinparam sequenceArrowThickness 1.5
+skinparam roundCorner 6
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam participant {
+    BackgroundColor #EAF1F8
+    BorderColor     #1F4E79
+    FontColor       #1F4E79
+    FontStyle       bold
+}
+
+skinparam sequence {
+    ArrowColor            #1F4E79
+    LifeLineBorderColor   #1F4E79
+    LifeLineBackgroundColor #FAFAFA
+    GroupBorderColor      #888888
+    GroupBackgroundColor  #F5F5F5
+    GroupFontColor        #333333
+    DividerBackgroundColor #EAF1F8
+    DividerBorderColor    #1F4E79
+}
+
+skinparam note {
+    BackgroundColor #FFF8DC
+    BorderColor     #C8A800
+}
+
+skinparam collections {
+    BackgroundColor #FFDDDD
+    BorderColor     #CC0000
+}
+
+participant "IoT Device"         as dev
+participant "Open vSwitch (br0)" as ovs
+participant "Ryu Controller"     as ryu   #D5E8D4
+participant "Zeek"               as zeek  #E1D5E7
+collections "Internet"           as inet  #F5F5F5
+
+dev -> ovs : TCP SYN\nsrc:DEVICE_IP dst:UNPERMITTED_IP
+
+note over ovs
+  Priority-100 per-device intercept
+  rule matches. Packet sent to
+  controller (packet-in).
+end note
+
+ovs --> zeek : [Mirror copy] TCP SYN
+
+ovs -> ryu : OpenFlow Packet-In
+
+ryu -> ryu : Check DEVICE_MAC\nagainst device_profiles.json.\nDestination IP is NOT in\nallowed_cidrs or allowed_domains\n→ DENY
+
+note over ryu
+  Ryu does NOT install a forward
+  rule. The packet is not re-injected
+  into the data plane. It is silently
+  dropped by the controller.
+  The default-deny rule at priority 1
+  handles any retransmissions that
+  arrive before the controller responds.
+end note
+
+ryu -> ryu : Append entry to\ndenied-log:\n{ timestamp, device_mac,\n  device_ip, dest_ip,\n  dest_port, proto }
+
+note over dev
+  Device receives no response.
+  The connection attempt times out.
+  No flow rule is installed for
+  this device/destination pair.
+end note
+
+note over inet
+  The destination is never
+  contacted.
+end note
+
+dev ->x ovs : TCP SYN (retransmit)
+
+note over ovs
+  Retransmitted packets hit the
+  default-deny rule (priority 1)
+  and are dropped in the data plane
+  without involving the controller.
+end note
+
+@enduml
+                                                                     
+```
+```kroki-plantuml
+@startuml detection_isolation
+
+title Anomaly Detection and Automated Device Isolation
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 220
+skinparam sequenceArrowThickness 1.5
+skinparam roundCorner 6
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam participant {
+    BackgroundColor #EAF1F8
+    BorderColor     #1F4E79
+    FontColor       #1F4E79
+    FontStyle       bold
+}
+
+skinparam sequence {
+    ArrowColor            #1F4E79
+    LifeLineBorderColor   #1F4E79
+    LifeLineBackgroundColor #FAFAFA
+    GroupBorderColor      #888888
+    GroupBackgroundColor  #F5F5F5
+    GroupFontColor        #333333
+    DividerBackgroundColor #EAF1F8
+    DividerBorderColor    #1F4E79
+}
+
+skinparam note {
+    BackgroundColor #FFF8DC
+    BorderColor     #C8A800
+}
+
+participant "IoT Device\n(Compromised)" as dev
+participant "Open vSwitch (br0)"        as ovs
+participant "Ryu Controller"            as ryu  #D5E8D4
+participant "Zeek"                      as zeek #E1D5E7
+participant "ML Pipeline"               as ml   #E1D5E7
+
+note over dev
+  The device has been compromised
+  and is generating anomalous traffic
+  (e.g. a port scan, connection to a
+  known-bad IP, or data exfiltration
+  exceeding volume thresholds).
+end note
+
+loop Anomalous traffic bursts
+
+    dev  -> ovs  : Traffic (various destinations/ports)
+    ovs --> zeek : [Mirror copy of all traffic on br0]
+    ovs  -> ryu  : [Packet-In for unmatched flows]
+    ryu  -> ovs  : Forward or drop per policy
+
+end
+
+note over zeek
+  Zeek analyses the mirrored traffic
+  stream in real time. Detection scripts
+  run continuously against conn.log,
+  dns.log, and other streams.
+end note
+
+group Zeek Rule-Based Detection
+
+    zeek -> zeek : detect-port-scan.zeek:\nSumStats observes DEVICE_IP\ncontacting N unique dst ports\nwithin time window T.\nThreshold exceeded → CRITICAL
+
+    zeek -> zeek : Write structured alert\nto iot_alerts.log:\n{ severity: CRITICAL,\n  src_ip: DEVICE_IP,\n  src_mac: DEVICE_MAC,\n  detector: "port_scan",\n  timestamp: NOW }
+
+    alt auto_isolate = T (enabled in local.zeek)
+
+        zeek -> ryu : POST /policy/isolate\n{ "mac": "DEVICE_MAC" }
+
+        ryu -> ryu : Install OFPFlowMod:\npriority 65535,\nmatch eth_src=DEVICE_MAC,\nactions=DROP\n(overrides all other rules)
+
+        ryu -> zeek : 200 OK\n{ "status": "isolated",\n  "mac": "DEVICE_MAC" }
+
+        note over ovs
+          All subsequent frames from
+          DEVICE_MAC are dropped at
+          priority 65535 before any
+          other rule is evaluated.
+          Isolation takes effect within
+          one RTT of the API call.
+        end note
+
+    else auto_isolate = F (default)
+
+        note over zeek
+          Alert is logged. No automated
+          action taken. Operator can
+          manually POST to /policy/isolate
+          to quarantine the device.
+        end note
+
+    end
+
+end
+
+group ML Pipeline Parallel Detection
+
+    ml -> ml  : Isolation Forest scores\nfeature windows from\nconn.log for DEVICE_MAC.\nAnomaly score exceeds\nconfigured threshold.
+
+    ml -> ml  : Write alert to ml_alerts.log:\n{ severity: CRITICAL,\n  src_mac: DEVICE_MAC,\n  model: "per_device",\n  score: ANOMALY_SCORE }
+
+    ml -> ryu : POST /policy/isolate\n{ "mac": "DEVICE_MAC" }
+
+    note over ryu
+      If Zeek has already isolated
+      the device, Ryu returns 200 OK
+      but does not install a duplicate
+      rule. The existing priority-65535
+      rule remains in place.
+    end note
+
+    ryu -> ml : 200 OK
+
+end
+
+note over dev
+  Device is isolated. No traffic
+  from DEVICE_MAC leaves OVS.
+  The device still holds its DHCP
+  lease and WiFi association but
+  cannot communicate on the network.
+end note
+
+@enduml
+                                                                       
+```

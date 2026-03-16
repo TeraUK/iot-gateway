@@ -59,6 +59,20 @@ nftables intercepts all DNS traffic from the IoT subnet before it leaves the hos
 # Prerouting chain (DNAT)
 # Matches: any UDP/TCP port 53 from 192.168.50.0/24
 # Redirects: to AdGuard at 172.20.0.53
+
+table inet filter {
+    chain input {
+        type filter hook input priority 0; policy accept;
+    }
+    chain forward {
+        type filter hook forward priority 0; policy accept;
+        iifname "br0" ip saddr 192.168.50.0/24 tcp dport 853 counter log prefix "IOT-DOT-BLOCKED: " drop
+        iifname "br0" ip saddr 192.168.50.0/24 udp dport 8853 counter log prefix "IOT-DOQ-BLOCKED: " drop
+    }
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}
 ```
 
 This defeats devices with hardcoded DNS resolvers (e.g., Google Smart Home devices that use `8.8.8.8` regardless of DHCP settings). The device's DNS query is answered by AdGuard regardless of what destination the device intended.

@@ -53,6 +53,7 @@ nav:
     - Overview: architecture/overview.md
     - Network Topology: architecture/network-topology.md
     - Data Flow: architecture/data-flow.md
+    - Traffic Path Sequence Diagram: architecture/traffic-path-sequence-diagrams.md
   - Components:
     - OVS and Ryu: components/ovs-ryu.md
     - Zeek: components/zeek.md
@@ -67,5 +68,5 @@ nav:
     - Training the Model: operations/training-the-model.md
     - Alert Response: operations/alert-response.md
     - Log Maintenance: operations/log-maintenance.md
-  - Scripts: scripts/index.md
-  - Requirements: requirements/index.md
+  - Scripts: scripts/Scripts.md
+  - Requirements: requirements/Requirements.md
