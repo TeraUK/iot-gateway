@@ -106,7 +106,7 @@ event zeek_init()
             local query_count = result["iot.dns_rate.queries"]$sum;
             local details = fmt("{\"dns_queries\": %d, \"epoch_secs\": %d}",
                                 double_to_count(query_count),
-                                dns_rate_epoch / 1 sec);
+                                double_to_count(dns_rate_epoch / 1 sec));
 
             if ( query_count >= dns_rate_critical_threshold )
                 {
@@ -146,7 +146,7 @@ event zeek_init()
             local dga_count = result["iot.dns_dga.high_entropy"]$sum;
             local details = fmt("{\"high_entropy_queries\": %d, \"entropy_threshold\": %.2f, \"epoch_secs\": %d}",
                                 double_to_count(dga_count), dga_entropy_threshold,
-                                dns_rate_epoch / 1 sec);
+                                double_to_count(dns_rate_epoch / 1 sec));
 
             if ( dga_count >= dga_critical_threshold )
                 {

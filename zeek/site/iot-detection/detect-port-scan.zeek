@@ -48,7 +48,7 @@ event zeek_init()
             local src = key$host;
             local unique_count = result["iot.port_scan.targets"]$unique;
             local details = fmt("{\"unique_targets\": %d, \"epoch_secs\": %d}",
-                                unique_count, port_scan_epoch / 1 sec);
+                                unique_count, double_to_count(port_scan_epoch / 1 sec));
 
             if ( unique_count >= port_scan_critical_threshold )
                 {
