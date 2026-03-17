@@ -57,6 +57,7 @@ watch:
   - scripts
   - installation
   - Services/zeek-mirror
+  - zeek
 
 nav:
   - Home: index.md
@@ -115,4 +116,16 @@ nav:
       - verify-phase4.sh: shell-code-reference/verify-phase4.md
     - Services:
       - attach-zeek-mirror.sh: shell-code-reference/attach-zeek-mirror.md
-
+  - Zeek Code Reference:
+    - Overview: zeek-code-reference/index.md
+    - entrypoint.sh: zeek-code-reference/entrypoint.md
+    - local.zeek: zeek-code-reference/local-zeek.md
+    - Detection Scripts:
+      - __load__.zeek: zeek-code-reference/load.md
+      - alert-framework.zeek: zeek-code-reference/alert-framework.md
+      - detect-port-scan.zeek: zeek-code-reference/detect-port-scan.md
+      - detect-dns-anomaly.zeek: zeek-code-reference/detect-dns-anomaly.md
+      - detect-new-destination.zeek: zeek-code-reference/detect-new-destination.md
+      - detect-protocol-anomaly.zeek: zeek-code-reference/detect-protocol-anomaly.md
+      - detect-volume-anomaly.zeek: zeek-code-reference/detect-volume-anomaly.md
+      - detect-known-bad.zeek: zeek-code-reference/detect-known-bad.md
