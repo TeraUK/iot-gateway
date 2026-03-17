@@ -59,3 +59,5 @@ draft_profiles.json
 # Ignore mkdocs output
 site/
 
+#ignore .venv-docs
+.venv-docs/
