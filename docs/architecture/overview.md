@@ -217,6 +217,7 @@ ovs-vswitchd → hostapd → dnsmasq → Docker containers → zeek-mirror.servi
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Granular control of per device communication | Not yet | Hardware driver limitations identified during phase 3 |
+| Granular per-device communication (selective) | Partially implemented | Per-pair unicast permits are supported via the REST API and OVS priority-160 rules with proxy ARP. Multicast service discovery (mDNS, SSDP) between permitted pairs is not yet supported and requires a selective multicast proxy service. See [hostapd](../components/hostapd.md) and [OVS and Ryu](../components/ovs-ryu.md). |
 | Observability stack | Out of scope | Acknowledged in NFR-10 (Won't Have) |
 | Wi-Fi Captive Portal | Out of scope | Acknowledged in NFR-11 (Won't Have) |
+

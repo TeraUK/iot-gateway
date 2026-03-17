@@ -6,7 +6,7 @@ hostapd is the WiFi access point daemon. It manages the `wlp3s0` wireless radio 
 
 hostapd sits at the very edge of the security perimeter. Its job is narrow but critical: decide which devices are allowed to associate with the network at all, before any other security layer is involved. A device that cannot pass WPA2 authentication never enters the OVS data plane.
 
-Once a device authenticates, hostapd bridges `wlp3s0` into the OVS bridge `br0`. From that point all of the device's traffic enters the OpenFlow pipeline and is subject to Ryu's flow rules -hostapd hands off and has no further involvement in forwarding decisions.
+Once a device authenticates, hostapd bridges `wlp3s0` into the OVS bridge `br0`. From that point all of the device's traffic enters the OpenFlow pipeline and is subject to Ryu's flow rules - hostapd hands off and has no further involvement in forwarding decisions.
 
 The `ap_isolate=1` setting in `hostapd.conf` instructs hostapd to block direct frame forwarding between associated stations at the 802.11 layer. This is a complementary control to the OVS anti-lateral-movement rule: even if an OVS misconfiguration were to allow IoT-to-IoT traffic, `ap_isolate` would block it before the frames reach OVS.
 
@@ -41,7 +41,9 @@ The configuration file is at `config/hostapd/hostapd.conf` in the repository and
 
 ### Passphrase file
 
-The WiFi passphrase is stored separately from `hostapd.conf` in `/etc/hostapd/hostapd.psk`. This separation means the configuration file can be committed to version control and shared without exposing the passphrase.
+The WiFi passphrase is stored separately from `hostapd.conf` in `/etc/hostapd/hostapd.psk`.
+
+This separation means the configuration file can be committed to version control and shared without exposing the passphrase.
 
 The file format is one entry per line:
 
@@ -52,7 +54,7 @@ The file format is one entry per line:
 The wildcard MAC address `00:00:00:00:00:00` applies the passphrase to all connecting clients. Per-device passphrases can be added by replacing the wildcard with a specific MAC address.
 
 ```bash
-# Correct permissions are critical -this file contains a credential
+# Correct permissions are critical - this file contains a credential
 sudo chmod 600 /etc/hostapd/hostapd.psk
 sudo chown root:root /etc/hostapd/hostapd.psk
 ```
@@ -75,13 +77,13 @@ This file is installed to `/etc/systemd/system/hostapd.service.d/override.conf` 
 
 ### What it does
 
-`ap_isolate=1` instructs hostapd to enable intra-BSS station isolation. When active, the AP drops any 802.11 frame where both the originating station and the destination station are associated with the same BSS -in other words, it prevents WiFi clients from sending frames directly to each other through the access point.
+`ap_isolate=1` instructs hostapd to enable intra-BSS station isolation. When active, the AP drops any 802.11 frame where both the originating station and the destination station are associated with the same BSS - in other words, it prevents WiFi clients from sending frames directly to each other through the access point.
 
 This operates entirely at the 802.11 driver level, before OVS is involved. When a device sends a frame and the destination MAC address belongs to another device currently associated with `IoT-Security-AP`, the nl80211 driver discards the frame immediately. The frame is never delivered to the `wlp3s0` port on the OVS bridge and OVS never processes it.
 
 ### Why it is necessary alongside the OVS anti-lateral-movement rule
 
-The OVS anti-lateral-movement rule (priority 150) drops any IPv4 packet arriving from `wlp3s0` that is destined for the IoT subnet (`192.168.50.0/24`). This blocks routed lateral movement -a device trying to reach another device by sending traffic via the gateway IP. However, the anti-lateral-movement rule cannot catch direct WiFi-to-WiFi frames that never pass through the OVS IP stack at all.
+The OVS anti-lateral-movement rule (priority 150) drops any IPv4 packet arriving from `wlp3s0` that is destined for the IoT subnet (`192.168.50.0/24`). This blocks routed lateral movement - a device trying to reach another device by sending traffic via the gateway IP. However, the anti-lateral-movement rule cannot catch direct WiFi-to-WiFi frames that never pass through the OVS IP stack at all.
 
 Without `ap_isolate`, Device A could send a raw L2 frame addressed directly to Device B's MAC address. That frame would arrive at OVS on the `wlp3s0` port, be matched against the flow table, and potentially be forwarded out the same `wlp3s0` port back to Device B. The anti-lateral-movement rule only matches on `eth_type=0x0800` (IPv4), so raw ARP or other non-IP frames addressed to another device would not be caught by it. ARP in particular is a meaningful gap: without isolation a device could ARP for another device, receive its IP, and then use raw IP to communicate with it directly at L2 before OVS's IPv4 rules become relevant.
 
@@ -93,52 +95,63 @@ Without `ap_isolate`, Device A could send a raw L2 frame addressed directly to D
 | Device A sends raw L2 frames directly to Device B | `ap_isolate=1` at the 802.11 driver level |
 | Device A ARPs for Device B, then sends direct IP | `ap_isolate=1` prevents the ARP response from reaching Device A |
 
-### Why ap_isolate prevents granular per-device micro-segmentation
+### Granular per-device communication via lateral permits
 
-`ap_isolate` is a binary, BSS-wide setting. It is either on -in which case no WiFi client can communicate with any other WiFi client directly -or off, in which case all clients can potentially reach each other through the AP. There is no built-in hostapd mechanism to say "allow Device A to reach Device B but not Device C."
+Although `ap_isolate` is a binary, BSS-wide setting with no built-in concept of permitted pairs, selective device-to-device communication is achievable by combining it with proxy ARP on `br0` and per-pair OVS exception rules at priority 160. This approach keeps `ap_isolate=1` fully active and does not weaken the 802.11-layer barrier.
 
-This is the core limitation for granular per-device micro-segmentation. In the gateway's current architecture, `wlp3s0` is a single OVS port. All IoT devices, regardless of their individual identity, enter OVS through that same port. OVS does know the source MAC address of every frame, so it can apply per-device rules for WAN-bound traffic (which is how per-device allowlists work for Phase 3). But for WiFi-to-WiFi traffic, the situation is different: if `ap_isolate` is disabled, whether a frame between two associated stations is delivered to the OVS bridge at all depends on the WiFi driver's behaviour -and on the reference hardware (`wlp3s0`, nl80211 driver, Intel i5-12500T), intra-BSS frames are handled internally by the driver and are not reliably delivered to the bridge. This was confirmed during Phase 3 development: disabling `ap_isolate` and relying on OVS rules alone to enforce device isolation did not work because OVS was not consistently receiving the frames.
+The mechanism works as follows. When a permit is granted between Device A and Device B via the REST API, Ryu installs four OpenFlow rules at priority 160, which sit above the anti-lateral-movement drop at priority 150:
 
-The result is an all-or-nothing choice at the WiFi layer: either block all device-to-device WiFi traffic with `ap_isolate=1`, or allow it all and depend entirely on OVS rules that may not reliably see the traffic. Given that the primary threat model for this gateway is IoT device lateral movement, `ap_isolate=1` is the correct choice. Granular control -permitting some device pairs to communicate while blocking others -is not achievable without changes to how the WiFi interface is presented to OVS.
+- Outbound A to B: `in_port=wifi, eth_src=MAC_A, ipv4_dst=IP_B` → `OFPP_LOCAL`
+- Outbound B to A: `in_port=wifi, eth_src=MAC_B, ipv4_dst=IP_A` → `OFPP_LOCAL`
+- Return to A: `in_port=LOCAL, eth_dst=MAC_A, ipv4_src=IP_B` → `wifi`
+- Return to B: `in_port=LOCAL, eth_dst=MAC_B, ipv4_src=IP_A` → `wifi`
 
-### What would be required to achieve granular per-device control
+Because `ap_isolate` blocks direct ARP between stations, proxy ARP must be enabled on `br0` so the kernel can answer ARP requests on behalf of each device. Two kernel settings are required:
 
-The root cause of the limitation is that all IoT devices share a single OVS port (`wlp3s0`). For OVS to enforce per-pair policies, each device would need to appear on a distinct OVS port, giving Ryu the port-level visibility it needs to install targeted forwarding rules.
+```bash
+# Allow the kernel to answer ARP requests on behalf of other devices on the subnet
+sudo sysctl -w net.ipv4.conf.br0.proxy_arp=1
 
-There are two architectural paths that would achieve this:
+# Required when requester and target are both reachable via the same interface
+sudo sysctl -w net.ipv4.conf.br0.proxy_arp_pvlan=1
+```
 
-**Option 1: Per-station virtual interfaces (4-address / WDS mode)**
+Make these persistent by adding them to `/etc/sysctl.d/99-iot-gateway.conf`:
 
-In this mode, hostapd creates a dedicated virtual network interface for each associated station -for example, `wlp3s0.sta_aa_bb_cc_dd_ee_ff`. Each of these virtual interfaces would be added to the OVS bridge as its own port. OVS would then see each device on a distinct port number, and Ryu could install per-pair rules such as "allow port 3 (Device A) to output to port 5 (Device B) but drop all other inter-device traffic."
+```
+net.ipv4.conf.br0.proxy_arp = 1
+net.ipv4.conf.br0.proxy_arp_pvlan = 1
+```
 
-Enabling this requires:
+With both settings active, the full packet journey for a permitted pair is:
 
-- Setting `wds_sta=1` in `hostapd.conf` to enable per-station 4-address mode.
-- The nl80211 driver and the specific WiFi chipset supporting per-station virtual interface creation. Not all hardware supports this.
-- The IoT client devices themselves supporting 4-address 802.11 frames. Consumer IoT devices almost universally do not -4-address mode is primarily used for wireless mesh backhaul between APs, not for client associations. This is the decisive hardware limitation. Even if the gateway hardware supported per-station VIFs, the IoT devices would reject the 4-address frames and fail to associate.
+1. Device A sends an ARP broadcast for Device B's IP. `ap_isolate` prevents it reaching Device B directly.
+2. The ARP reaches `br0` via the OVS essential services ARP rule (priority 200). The kernel replies using the gateway's own MAC, telling Device A that Device B is at the gateway MAC.
+3. Device A sends an IP packet to the gateway MAC with destination IP = Device B's IP. The priority-160 OVS rule forwards it to `OFPP_LOCAL`.
+4. The kernel routes it back out `br0` toward Device B, using Device B's real MAC as the Ethernet destination. `ap_isolate` does not block this frame because its source is the gateway, not another station.
+5. Device B's reply follows the same path in reverse.
 
-**Option 2: Per-client dynamic VLAN assignment**
+The devices communicate entirely via the gateway as a Layer 3 relay. No direct WiFi-to-WiFi frames are exchanged at any point.
 
-hostapd supports assigning each associated station to a VLAN at association time via the `per_sta_vif=1` option or via a RADIUS server returning a VLAN attribute. Each VLAN would appear as a tagged sub-interface on the bridge (e.g. `wlp3s0.100`, `wlp3s0.101`), again giving each device a distinct bridge interface and therefore a distinct OVS port.
+**Known limitation - multicast service discovery:** mDNS (port 5353) and SSDP (port 1900) are also blocked by `ap_isolate` and by the OVS default-deny rule. Devices cannot organically discover each other by hostname or service name. The administrator must know both device IP addresses before creating a permit. A selective multicast proxy service would be required to support full device discovery and is a potential future enhancement.
 
-This approach does not require client-side support for 4-address frames. However:
+See [REST API](../reference/api.md) for the lateral permit endpoint reference and [OVS and Ryu](ovs-ryu.md) for the OpenFlow rule details.
 
-- `per_sta_vif=1` requires the driver to support dynamic per-station interface creation, which is driver and firmware dependent. Testing on the reference hardware confirmed that this is not reliably supported on `wlp3s0` with the nl80211 driver.
-- VLAN-based assignment via RADIUS would require running a RADIUS server and configuring MAC-based authentication, adding significant operational complexity.
+### Why a hardware access point enables full per-device granularity
 
-**Option 3: Hardware access point**
+The approach described above enables selective communication between explicitly permitted pairs but does not give OVS the per-device port visibility it would need for truly arbitrary per-device policies. The root cause is that all IoT devices share a single OVS port (`wlp3s0`).
 
-Enterprise and prosumer access points -devices such as the Ubiquiti UniFi range -typically expose each associated client as a separate bridge interface, or support per-client VLAN tagging natively, without the driver limitations of an embedded WiFi radio. Replacing `wlp3s0` with a hardware AP connected to the host via Ethernet (and adding that Ethernet interface to the OVS bridge instead) would sidestep the driver constraint entirely. The hardware AP would handle the 802.11 layer and present each device as a standard Ethernet frame source, which OVS handles correctly.
-
-This is the most practical path to granular per-device WiFi control but requires additional hardware and a change to the network topology.
-
-**Summary of the limitation**
-
-The requirement for granular per-device communication control (allowing Device A to reach Device B while blocking Device A from Device C) is recorded as not yet implemented in the architecture overview. The current implementation provides complete isolation of all IoT devices from each other, which is the appropriate default posture for a zero-trust IoT network. If selective device-to-device communication becomes a specific requirement, Option 3 (hardware AP) is the most reliable path forward with the current system architecture.
+A hardware AP connected to the host via Ethernet sidesteps this entirely. The AP handles the 802.11 layer internally and presents each associated client to OVS as a plain Ethernet frame source on a distinct port. OVS can then install per-pair forwarding rules without any reliance on proxy ARP or Layer 3 routing through the gateway. This is the most flexible architecture but requires additional hardware.
 
 ## Security considerations
 
-**WPA2-PSK limitations.** All IoT devices share a single passphrase. This is a practical constraint -most IoT devices do not support WPA2-Enterprise (RADIUS). If the passphrase is compromised, all devices on the network must be re-provisioned. The OVS and Ryu policy layers provide defence in depth, so a compromised passphrase does not automatically give an attacker access to other devices or the gateway itself.
+**WPA2-PSK limitations.** All IoT devices share a single passphrase. This is a practical constraint - most IoT devices do not support WPA2-Enterprise (RADIUS). If the passphrase is compromised, all devices on the network must be re-provisioned. The OVS and Ryu policy layers provide defence in depth, so a compromised passphrase does not automatically give an attacker access to other devices or the gateway itself.
+
+**MAC randomisation.** Many modern devices randomise their MAC address when scanning for networks or when connecting to a new network. This will cause the device to appear in `/policy/devices` under its randomised MAC, but any lateral permit or device profile created using that MAC will break when the device reconnects with a different randomised MAC. Disable MAC randomisation on devices that are to be profiled or given lateral permits. On Linux this is done per-connection:
+
+```bash
+nmcli connection modify "IoT-Security-AP" wifi.cloned-mac-address permanent
+```
 
 **Channel selection.** Channel 7 was chosen to minimise overlap with typical home router channels (1, 6, 11). If persistent interference is observed, change the `channel` value in `hostapd.conf` and restart hostapd. Refer to local regulatory limits for valid channels in your country.
 

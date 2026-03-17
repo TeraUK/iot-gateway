@@ -81,15 +81,16 @@ DNS-over-TLS (port 853) and DNS-over-QUIC (port 8853) are blocked at the nftable
 
 ## OVS flow rule priority scheme
 
+The following table reflects all priority levels currently in use. Higher priority wins. The isolation rule at 65535 overrides everything else including lateral permits.
+
 | Priority | Rule type | Description |
 |----------|-----------|-------------|
 | 65535 | Isolation | Per-device DROP rule (dynamic, installed on alert) |
-| 500 | Allowlist | Per-device destination FORWARD rules (Phase 3) |
+| 500 | Allowlist | Per-device destination FORWARD rules (Phase 3, reactive) |
 | 200 | Essential services | DHCP, DNS, NTP, ARP - universally permitted |
-| 150 | Anti-lateral-movement | Drops IoT→IoT traffic via gateway routing |
+| 160 | Lateral permit | Per-pair exception to the anti-lateral-movement rule (dynamic) |
+| 150 | Anti-lateral-movement | Drops IoT to IoT routed traffic via gateway |
 | 100 | Per-device intercept | Matches profiled devices in enforcing mode |
 | 50 | General WAN | Allows all devices to reach the internet (Phase 2, overridden by per-device rules) |
 | 1 | Default deny | Drops everything not explicitly permitted |
 | 0 | Table-miss | Sends unmatched packets to controller |
-
-Higher priority wins. The isolation rule at 65535 overrides everything else, including essential services.
