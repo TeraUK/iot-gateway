@@ -68,7 +68,7 @@ After all phases, run the full health check:
 ```bash
 sudo ./scripts/health-check.sh
 ```
-##AdGuard Home Admin Panel
+## AdGuard Home Admin Panel
 
 | URL | Purpose |
 |-----|---------|
