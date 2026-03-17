@@ -923,7 +923,7 @@ run_health_check() {
 print_summary() {
     echo ""
     echo "============================================================"
-    echo "  IoT Security Gateway — Setup Complete"
+    echo "  IoT Security Gateway -Setup Complete"
     echo "  $(date)"
     echo "============================================================"
     echo ""
@@ -966,7 +966,7 @@ print_summary() {
 
 main() {
     echo "============================================================"
-    echo "  IoT Security Gateway — Environment Setup"
+    echo "  IoT Security Gateway -Environment Setup"
     echo "  $(date)"
     if [ "$FORCE_REBUILD" = true ]; then
         echo "  Mode: rebuild (--rebuild passed, Docker images will be rebuilt)"

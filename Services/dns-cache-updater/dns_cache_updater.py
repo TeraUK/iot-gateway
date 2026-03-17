@@ -188,6 +188,15 @@ def push_to_ryu(mappings):
 
 
 def main():
+    """
+    Entry point for the DNS cache updater service.
+
+    Runs an infinite polling loop that reads new entries from Zeek's
+    dns.log via docker exec, extracts domain-to-IP mappings for domains
+    that appear in device profiles, and pushes those mappings to Ryu's
+    in-memory DNS cache. Also performs a full cache refresh on every
+    FULL_REFRESH_INTERVAL cycle to resynchronise after a Ryu restart.
+    """
     LOG.info("DNS Cache Updater started")
     LOG.info("  Zeek container: %s", ZEEK_CONTAINER)
     LOG.info("  DNS log path: %s", ZEEK_DNS_LOG)

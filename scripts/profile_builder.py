@@ -44,6 +44,13 @@ GATEWAY_IP = "192.168.50.1"
 
 
 def parse_args():
+    """
+    Parse and return command-line arguments for the profile builder.
+
+    Configures the argument parser with all supported flags and returns
+    the populated namespace. Required arguments cause the parser to exit
+    with an error message if omitted.
+    """
     parser = argparse.ArgumentParser(
         description="Analyse Zeek logs and build per-device traffic profiles.",
     )
@@ -394,6 +401,14 @@ def write_output(profiles, output_path):
 
 
 def main():
+    """
+    Entry point for the profile builder script.
+
+    Loads DHCP lease data, analyses conn.log and dns.log files found
+    inside the Zeek container, builds per-device profiles, prints a
+    summary to stdout, and optionally writes a draft device_profiles.json
+    file to the path specified by --output.
+    """
     args = parse_args()
 
     print("IoT Security Gateway - Device Profile Builder")

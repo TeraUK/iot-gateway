@@ -366,6 +366,13 @@ class GatewayPolicy(app_manager.RyuApp):
     # -- REST API data methods (Phase 2, unchanged) -------------------------
 
     def get_status(self):
+        """
+        Return a snapshot of the current policy engine state.
+
+        Includes switch connection status, rule count, known and isolated
+        device counts, enforcement mode, profiled device count, DNS cache
+        size, and the denied-log entry count.
+        """
         return {
             "switch_connected": self.datapath is not None,
             "switch_dpid": self.datapath.id if self.datapath else None,
@@ -386,6 +393,10 @@ class GatewayPolicy(app_manager.RyuApp):
         }
 
     def get_known_devices(self):
+        """
+        Return all MAC addresses seen on the WiFi port, augmented with
+        profile and isolation status from the current engine state.
+        """
         # Augment the device list with profile status.
         devices = {}
         for mac, info in self.known_devices.items():

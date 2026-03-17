@@ -30,7 +30,12 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [ml-pipeline/app, ml-pipeline/train]
+          paths:
+            - ml-pipeline/app
+            - ml-pipeline/train
+            - ryu/apps
+            - scripts
+            - Services/dns-cache-updater
           options:
             show_source: true
             show_root_heading: true
@@ -42,9 +47,16 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: ["."]
   - tables
   - toc:
       permalink: true
+
+watch:
+  - scripts
+  - installation
+  - Services/zeek-mirror
 
 nav:
   - Home: index.md
@@ -83,3 +95,24 @@ nav:
     - Profile Builder: scripts/profile-builder.md
     - Verification Scripts: scripts/verification-scripts.md
   - Requirements: requirements/Requirements.md
+  - Python Code Reference:
+    - ML Pipeline: python-code-reference/ml-pipeline.md
+    - Model Training: python-code-reference/training.md
+    - Ryu Gateway Policy App: python-code-reference/ryu-gateway-policy-app.md
+    - Profile Builder: python-code-reference/profile-builder.md
+    - DNS Cache Updater: python-code-reference/dns-cache-updater.md
+  - Shell Code Reference:
+    - Overview: shell-code-reference/index.md
+    - Installation:
+      - install.sh: shell-code-reference/install.md
+      - build-docs.sh: shell-code-reference/build-docs.md
+    - Scripts:
+      - health-check.sh: shell-code-reference/health-check.md
+      - log-maintenance.sh: shell-code-reference/log-maintenance.md
+      - verify-phase1.sh: shell-code-reference/verify-phase1.md
+      - verify-phase2.sh: shell-code-reference/verify-phase2.md
+      - verify-phase3.sh: shell-code-reference/verify-phase3.md
+      - verify-phase4.sh: shell-code-reference/verify-phase4.md
+    - Services:
+      - attach-zeek-mirror.sh: shell-code-reference/attach-zeek-mirror.md
+
