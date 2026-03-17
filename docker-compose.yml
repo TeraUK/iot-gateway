@@ -14,6 +14,8 @@ services:
     volumes:
       # Mount the config directory so device_profiles.json can be edited on the host and reloaded via the REST API.
       - ./ryu/config:/opt/ryu/config:ro
+      - /var/lib/misc/dnsmasq.leases:/var/lib/misc/dnsmasq.leases:ro 
+      # Mounting the dnsmasq leases file allows Ryu to correlate DHCP leases when a device reconnects with a cached lease.
     networks:
       - gateway-net
     # Resource limits per architecture doc estimates

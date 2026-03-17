@@ -85,6 +85,15 @@ DEVICE_PROFILES_PATH = os.environ.get(
     "/opt/ryu/config/device_profiles.json",
 )
 
+# Path to the dnsmasq active lease file on the host.
+# Read at startup to pre-populate known_devices with MAC-to-IP mappings
+# for devices that already hold leases, avoiding the need for each device
+# to go through a full DHCP exchange before it appears in /policy/devices.
+DNSMASQ_LEASES_PATH = os.environ.get(
+    "DNSMASQ_LEASES_PATH",
+    "/var/lib/misc/dnsmasq.leases",
+)
+
 # -- Priority Levels --------------------------------------------------------
 # Higher number = higher priority = matched first in OVS.
 
@@ -481,6 +490,11 @@ class GatewayPolicy(app_manager.RyuApp):
         # Load device profiles from config on startup.
         self._load_profiles_from_file()
 
+        # Pre-populate known_devices from the dnsmasq lease file so that
+        # devices with cached leases are visible immediately without
+        # needing a new DHCP exchange.
+        self._load_leases_from_file()
+
     # -- Profile loading ----------------------------------------------------
 
     def _load_profiles_from_file(self):
@@ -526,6 +540,97 @@ class GatewayPolicy(app_manager.RyuApp):
             self.enforcement_mode,
             self.idle_timeout,
         )
+
+    def _load_leases_from_file(self):
+        """
+        Pre-populate ``known_devices`` from the dnsmasq active lease file
+        at startup.
+
+        dnsmasq writes a lease record for every active DHCP lease to
+        ``/var/lib/misc/dnsmasq.leases``. Each line has the format::
+
+            <expiry_timestamp> <mac> <ip> <hostname> <client-id>
+
+        Reading this file at startup means devices that already hold a
+        valid lease are immediately visible in ``/policy/devices`` without
+        needing to go through a new DHCP exchange. This is particularly
+        important after a Ryu restart, where all runtime state is lost
+        but the lease table on the host is preserved.
+
+        Existing entries in ``known_devices`` are not overwritten, so if
+        a device has already been seen via a PacketIn event the live
+        observation takes precedence over the lease file.
+
+        The lease file is read directly from the host filesystem. The
+        default path ``/var/lib/misc/dnsmasq.leases`` must be accessible
+        inside the container. If running in Docker, mount the file as a
+        read-only bind mount or override ``DNSMASQ_LEASES_PATH`` via an
+        environment variable.
+        """
+        if not os.path.exists(DNSMASQ_LEASES_PATH):
+            LOG.warning(
+                "dnsmasq lease file not found at %s. "
+                "Devices with cached leases will not appear in /policy/devices "
+                "until they next perform a full DHCP exchange. "
+                "Mount the file into the container or set DNSMASQ_LEASES_PATH "
+                "to resolve this.",
+                DNSMASQ_LEASES_PATH,
+            )
+            return
+
+        loaded = 0
+        skipped = 0
+        now = datetime.now(timezone.utc).isoformat()
+
+        try:
+            with open(DNSMASQ_LEASES_PATH, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    # dnsmasq lease line format:
+                    #   <expiry> <mac> <ip> <hostname> <client-id>
+                    parts = line.split()
+                    if len(parts) < 3:
+                        continue
+
+                    mac = parts[1].lower()
+                    ip  = parts[2]
+
+                    # Skip obviously invalid entries.
+                    if ip == "0.0.0.0" or mac == "00:00:00:00:00:00":
+                        continue
+
+                    if mac in self.known_devices:
+                        # Already registered via a PacketIn event; leave it.
+                        skipped += 1
+                        continue
+
+                    self.known_devices[mac] = {
+                        "first_seen": now,
+                        "last_seen":  now,
+                        "ip":         ip,
+                    }
+                    loaded += 1
+
+        except IOError as e:
+            LOG.error("Failed to read dnsmasq lease file %s: %s",
+                      DNSMASQ_LEASES_PATH, e)
+            return
+
+        if loaded:
+            LOG.info(
+                "Pre-populated %d device(s) from dnsmasq lease file %s "
+                "(%d skipped, already known).",
+                loaded, DNSMASQ_LEASES_PATH, skipped,
+            )
+        else:
+            LOG.info(
+                "dnsmasq lease file %s contained no new entries "
+                "(%d already known).",
+                DNSMASQ_LEASES_PATH, skipped,
+            )
 
     # -- Phase 2: status and device queries --------------------------------
 
