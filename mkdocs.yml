@@ -96,13 +96,13 @@ nav:
     - Profile Builder: scripts/profile-builder.md
     - Verification Scripts: scripts/verification-scripts.md
   - Requirements: requirements/Requirements.md
-  - Python Code Reference:
+  - Python Code Ref:
     - ML Pipeline: python-code-reference/ml-pipeline.md
     - Model Training: python-code-reference/training.md
     - Ryu Gateway Policy App: python-code-reference/ryu-gateway-policy-app.md
     - Profile Builder: python-code-reference/profile-builder.md
     - DNS Cache Updater: python-code-reference/dns-cache-updater.md
-  - Shell Code Reference:
+  - Shell Code Ref:
     - Overview: shell-code-reference/index.md
     - Installation:
       - install.sh: shell-code-reference/install.md
@@ -116,7 +116,7 @@ nav:
       - verify-phase4.sh: shell-code-reference/verify-phase4.md
     - Services:
       - attach-zeek-mirror.sh: shell-code-reference/attach-zeek-mirror.md
-  - Zeek Code Reference:
+  - Zeek Code Ref:
     - Overview: zeek-code-reference/index.md
     - entrypoint.sh: zeek-code-reference/entrypoint.md
     - local.zeek: zeek-code-reference/local-zeek.md
