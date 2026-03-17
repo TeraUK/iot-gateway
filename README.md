@@ -22,6 +22,15 @@ To build the documentation, run **installation/build-docs.sh**
 
 To install the gateway, run **installation/install.sh**
 
+## AdGuard Home Admin Panel
+
+| URL | Purpose |
+|-----|---------|
+| http://<host>:8088 | Admin panel (after initial setup) |
+| http://<host>:3000 | Initial setup wizard only |
+
+*Note. if you used the install.sh script, the initial setup has already been completed*
+
 ## Architecture Diagram
 
 ![Diagram of High Level Architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/TeraUK/iot-gateway/refs/heads/main/architecture-diagram.puml)
