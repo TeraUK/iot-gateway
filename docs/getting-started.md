@@ -70,9 +70,10 @@ sudo ./scripts/health-check.sh
 ```
 ##AdGuard Home Admin Panel
 
-URL	Purpose
-http://<host>:8088	Admin panel (after initial setup)
-http://<host>:3000	Initial setup wizard only
+| URL | Purpose |
+|-----|---------|
+| http://<host>:8088 | Admin panel (after initial setup) |
+| http://<host>:3000 | Initial setup wizard only |
 
 *Note. if you used the install.sh script, the initial setup has already been completed*
 
