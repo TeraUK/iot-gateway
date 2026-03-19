@@ -133,7 +133,7 @@ With both settings active, the full packet journey for a permitted pair is:
 
 The devices communicate entirely via the gateway as a Layer 3 relay. No direct WiFi-to-WiFi frames are exchanged at any point.
 
-**Known limitation - multicast service discovery:** mDNS (port 5353) and SSDP (port 1900) are also blocked by `ap_isolate` and by the OVS default-deny rule. Devices cannot organically discover each other by hostname or service name. The administrator must know both device IP addresses before creating a permit. A selective multicast proxy service would be required to support full device discovery and is a potential future enhancement.
+**multicast service discovery:** mDNS (port 5353) and SSDP (port 1900) are also blocked by `ap_isolate` and by the OVS default-deny rule. Devices cannot organically discover each other by hostname or service name. The administrator must know both device IP addresses before creating a permit.
 
 See [REST API](../reference/api.md) for the lateral permit endpoint reference and [OVS and Ryu](ovs-ryu.md) for the OpenFlow rule details.
 
