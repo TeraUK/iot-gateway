@@ -31,10 +31,6 @@ To install the gateway, run **installation/install.sh**
 
 *Note. if you used the install.sh script, the initial setup has already been completed*
 
-## Architecture Diagram
-
-![Diagram of High Level Architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/TeraUK/iot-gateway/refs/heads/main/architecture-diagram.puml)
-
 # IoT Security Gateway -Quick Reference
 
 ---
