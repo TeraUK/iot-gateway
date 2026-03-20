@@ -19,16 +19,17 @@
 #   5.  Creates /etc/hostapd/hostapd.psk (WiFi passphrase -- prompted interactively)
 #   6.  Installs systemd service dependency overrides for hostapd and dnsmasq
 #   7.  Deploys the nftables ruleset and enables IP forwarding persistently
-#   8.  Builds Docker images (skipped if already built, unless --rebuild is passed)
-#   9.  Creates the OVS bridge (br0), adds wlp3s0, assigns 192.168.50.1/24,
+#   8.  Sets execute permissions on all repository shell scripts
+#   9.  Builds Docker images (skipped if already built, unless --rebuild is passed)
+#   10. Creates the OVS bridge (br0), adds wlp3s0, assigns 192.168.50.1/24,
 #       and points the OpenFlow controller at Ryu on tcp:127.0.0.1:6653
-#   10. Generates adguard/conf/AdGuardHome.yaml from the base template,
+#   11. Generates adguard/conf/AdGuardHome.yaml from the base template,
 #       prompting for an admin username and password (skipped if already exists)
-#   11. Installs attach-zeek-mirror.sh and zeek-mirror.service
-#   12. Installs dns_cache_updater.py and dns-cache-updater.service
-#   13. Installs log-maintenance.sh and configures the daily cron job
-#   14. Enables and starts all systemd services in dependency order
-#   15. Runs the health check to confirm a working state
+#   12. Installs attach-zeek-mirror.sh and zeek-mirror.service
+#   13. Installs dns_cache_updater.py and dns-cache-updater.service
+#   14. Installs log-maintenance.sh and configures the daily cron job
+#   15. Enables and starts all systemd services in dependency order
+#   16. Runs the health check to confirm a working state
 #
 # Usage:
 #   sudo ./install.sh              # Fresh install or safe re-run
@@ -249,10 +250,13 @@ check_running_system() {
 install_system_packages() {
     section "Step 1: System Packages"
 
-    # Updates the package index only if it is more than an hour old, to
-    # avoid unnecessary network traffic on re-runs.
-    if [ ! -f /var/lib/apt/lists/partial ] || \
-       find /var/lib/apt/lists -maxdepth 1 -name "*.lz4" -newer /proc/1 2>/dev/null | grep -q .; then
+    # Updates the package index if the cached lists are older than one hour,
+    # to avoid unnecessary network traffic on re-runs.
+    local apt_cache_age=0
+    if [ -d /var/lib/apt/lists ]; then
+        apt_cache_age=$(find /var/lib/apt/lists -maxdepth 1 -name "*.lz4" -mmin -60 2>/dev/null | head -1 | wc -l)
+    fi
+    if [ "$apt_cache_age" -eq 0 ]; then
         info "Updating apt package index..."
         apt-get update -qq
     fi
@@ -416,11 +420,11 @@ configure_hostapd() {
     fi
 
     # Installs the systemd drop-in override for startup ordering.
-    # Only reloads the daemon if the override file itself changed.
+    # The directory must exist before apply_config attempts the copy.
+    mkdir -p /etc/systemd/system/hostapd.service.d
     HOSTAPD_OVERRIDE_CHANGED=false
     if apply_config "config/hostapd/override.conf" \
                     "/etc/systemd/system/hostapd.service.d/override.conf"; then
-        mkdir -p /etc/systemd/system/hostapd.service.d
         HOSTAPD_OVERRIDE_CHANGED=true
     fi
 }
@@ -437,10 +441,11 @@ configure_dnsmasq() {
         DNSMASQ_CONFIG_CHANGED=true
     fi
 
+    # The directory must exist before apply_config attempts the copy.
+    mkdir -p /etc/systemd/system/dnsmasq.service.d
     DNSMASQ_OVERRIDE_CHANGED=false
     if apply_config "config/dnsmasq/override.conf" \
                     "/etc/systemd/system/dnsmasq.service.d/override.conf"; then
-        mkdir -p /etc/systemd/system/dnsmasq.service.d
         DNSMASQ_OVERRIDE_CHANGED=true
     fi
 }
@@ -519,11 +524,11 @@ build_docker_images() {
 }
 
 # ---------------------------------------------------------------------------
-# Step 9: OVS bridge
+# Step 10: OVS bridge
 # ---------------------------------------------------------------------------
 
 configure_ovs() {
-    section "Step 9: Open vSwitch Bridge"
+    section "Step 10: Open vSwitch Bridge"
 
     # Ensures OVS is running before any vsctl commands.
     if ! systemctl is-active --quiet ovs-vswitchd; then
@@ -585,11 +590,11 @@ configure_ovs() {
 }
 
 # ---------------------------------------------------------------------------
-# Step 10: AdGuard Home configuration
+# Step 11: AdGuard Home configuration
 # ---------------------------------------------------------------------------
 
 configure_adguard() {
-    section "Step 10: AdGuard Home Configuration"
+    section "Step 11: AdGuard Home Configuration"
 
     local base_file="adguard/conf/AdguardHome.yaml.base"
     local output_file="adguard/conf/AdGuardHome.yaml"
@@ -706,11 +711,11 @@ PYEOF
 }
 
 # ---------------------------------------------------------------------------
-# Step 11: Zeek mirror service
+# Step 12: Zeek mirror service
 # ---------------------------------------------------------------------------
 
 install_zeek_mirror_service() {
-    section "Step 11: Zeek Mirror Service"
+    section "Step 12: Zeek Mirror Service"
 
     # Copies the attachment script only if it differs from the installed version.
     if needs_update "Services/zeek-mirror/attach-zeek-mirror.sh" \
@@ -735,11 +740,11 @@ install_zeek_mirror_service() {
 }
 
 # ---------------------------------------------------------------------------
-# Step 12: DNS cache updater service
+# Step 13: DNS cache updater service
 # ---------------------------------------------------------------------------
 
 install_dns_cache_updater() {
-    section "Step 12: DNS Cache Updater Service"
+    section "Step 13: DNS Cache Updater Service"
 
     DNS_UPDATER_CHANGED=false
 
@@ -765,11 +770,11 @@ install_dns_cache_updater() {
 }
 
 # ---------------------------------------------------------------------------
-# Step 13: Log maintenance cron job
+# Step 14: Log maintenance cron job
 # ---------------------------------------------------------------------------
 
 install_log_maintenance() {
-    section "Step 13: Log Maintenance"
+    section "Step 14: Log Maintenance"
 
     if needs_update "scripts/log-maintenance.sh" "/usr/local/bin/log-maintenance.sh"; then
         cp scripts/log-maintenance.sh /usr/local/bin/log-maintenance.sh
@@ -789,7 +794,7 @@ install_log_maintenance() {
 }
 
 # ---------------------------------------------------------------------------
-# Step 14: Start / reload services
+# Step 15: Start / reload services
 #
 # Services are only restarted if their configuration actually changed.
 # This avoids dropping connected WiFi clients on re-runs where nothing
@@ -797,7 +802,7 @@ install_log_maintenance() {
 # ---------------------------------------------------------------------------
 
 start_services() {
-    section "Step 14: Services"
+    section "Step 15: Services"
 
     # Starts Docker containers. 'docker compose up -d' is idempotent:
     # it starts containers that are not running and leaves running
@@ -898,11 +903,11 @@ start_services() {
 }
 
 # ---------------------------------------------------------------------------
-# Step 15: Health check
+# Step 16: Health check
 # ---------------------------------------------------------------------------
 
 run_health_check() {
-    section "Step 15: Health Check"
+    section "Step 16: Health Check"
 
     info "Waiting 15 seconds for all services to stabilise..."
     sleep 15
@@ -923,7 +928,7 @@ run_health_check() {
 print_summary() {
     echo ""
     echo "============================================================"
-    echo "  IoT Security Gateway -Setup Complete"
+    echo "  IoT Security Gateway - Setup Complete"
     echo "  $(date)"
     echo "============================================================"
     echo ""
@@ -945,10 +950,10 @@ print_summary() {
     echo "    sudo ./scripts/health-check.sh"
     echo ""
     echo "  Build the documentation site:"
-    echo "    ./build-docs.sh"
+    echo "    ./installation/build-docs.sh"
     echo ""
     echo "  Force a Docker image rebuild on the next run:"
-    echo "    sudo ./install.sh --rebuild"
+    echo "    sudo ./installation/install.sh --rebuild"
     echo ""
     echo "  NOTE: OVS fail mode is set to 'standalone' (development)."
     echo "  Once Ryu has been running reliably for several days, harden"
@@ -966,7 +971,7 @@ print_summary() {
 
 main() {
     echo "============================================================"
-    echo "  IoT Security Gateway -Environment Setup"
+    echo "  IoT Security Gateway - Environment Setup"
     echo "  $(date)"
     if [ "$FORCE_REBUILD" = true ]; then
         echo "  Mode: rebuild (--rebuild passed, Docker images will be rebuilt)"
