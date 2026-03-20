@@ -100,7 +100,6 @@ nav:
     - Log Maintenance: scripts/log-maintenance.md
     - Profile Builder: scripts/profile-builder.md
     - Verification Scripts: scripts/verification-scripts.md
-  - Requirements: requirements/Requirements.md
   - Python Code Ref:
     - ML Pipeline: python-code-reference/ml-pipeline.md
     - Model Training: python-code-reference/training.md
