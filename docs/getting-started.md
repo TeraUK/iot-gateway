@@ -34,6 +34,12 @@ curl -X POST http://127.0.0.1:8080/policy/allowlists/mode \
 sudo ./scripts/verify-phase3.sh
 ```
 
+## Granular Micro Segmentation
+
+This gateway implements granular micro segmentation. The RYU rest API can be used to grant lateral movement permits for a pair of devices.
+
+see [Rest API Reference](reference/api.md)
+
 ## Detection scripts and automated isolation
 
 By default, auto-isolation is disabled (`auto_isolate = F` in `local.zeek`). Enable it only after validating the detection scripts are not generating false positives on legitimate traffic.
