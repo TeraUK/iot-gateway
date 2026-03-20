@@ -66,6 +66,6 @@ pipeline.py: classify() applies rule-based checks
         Ryu installs priority-65535 DROP rule in OVS
 ```
 
-see [ML-Pipeline](../components/ml-pipeline.md)
+see [ML-Pipeline](../components/ml-pipeline/ml-pipeline.md)
 
 ---

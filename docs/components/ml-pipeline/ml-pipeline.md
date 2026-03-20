@@ -127,7 +127,7 @@ The pipeline loads all `.joblib` files at startup. To pick up new models after r
 docker compose restart ml-pipeline
 ```
 
-For training instructions, see [Training the Model](../operations/training-the-model.md).
+For training instructions, see [Training the Model](../../operations/training-the-model.md).
 
 ## Known limitations
 

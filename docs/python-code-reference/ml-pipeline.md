@@ -5,7 +5,7 @@ detection pipeline. The reference is auto-generated from the source code
 docstrings so it always reflects the current implementation.
 
 For a functional description of the pipeline see
-[Components: ML Pipeline](../components/ml-pipeline.md).
+[Components: ML Pipeline](../components/ml-pipeline/ml-pipeline.md).
 
 ---
 

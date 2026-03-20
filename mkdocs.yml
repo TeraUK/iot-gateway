@@ -73,7 +73,11 @@ nav:
     - OVS and Ryu: components/ovs-ryu.md
     - Zeek: components/zeek.md
     - AdGuard Home: components/adguard.md
-    - ML Pipeline: components/ml-pipeline.md
+    - ML Pipeline: 
+      - Overview: components/ml-pipeline/ml-pipeline.md
+      - Data Flow: components/ml-pipeline/ml-pipeline-dataflow.md
+      - Sequence Diagram: components/ml-pipeline/ml-pipeline-sequence-diagram.md
+      - Module Structure: components/ml-pipeline/ml-pipeline-modules.md
     - dnsmasq: components/dnsmasq.md
     - hostapd: components/hostapd.md
     - nftables: components/nftables.md

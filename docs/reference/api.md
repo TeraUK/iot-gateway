@@ -10,6 +10,12 @@ Base URL: `http://127.0.0.1:8080` (host) or `http://ryu:8080` (from containers o
 
 Returns the current state of the policy engine.
 
+**curl**
+
+```bash
+curl http://127.0.0.1:8080/policy/status
+```
+
 **Response**
 
 ```json
@@ -40,6 +46,12 @@ Returns the current state of the policy engine.
 ## `GET /policy/devices`
 
 Returns all MAC addresses known to the policy engine. The table is pre-populated from the dnsmasq lease file at startup and updated via DHCP snooping and IPv4 packet observation at runtime.
+
+**curl**
+
+```bash
+curl http://127.0.0.1:8080/policy/devices
+```
 
 **Response**
 
@@ -73,6 +85,14 @@ Returns all MAC addresses known to the policy engine. The table is pre-populated
 ## `POST /policy/isolate`
 
 Quarantine a device by MAC address. Installs a priority-65535 DROP rule for all traffic to and from that MAC. Isolation overrides all other rules including lateral permits and essential services.
+
+**curl**
+
+```bash
+curl -X POST http://127.0.0.1:8080/policy/isolate \
+  -H "Content-Type: application/json" \
+  -d '{"mac": "aa:bb:cc:dd:ee:ff", "reason": "port scan detected"}'
+```
 
 **Request body**
 
@@ -110,6 +130,14 @@ Quarantine a device by MAC address. Installs a priority-65535 DROP rule for all 
 
 Remove isolation from a device. Deletes the priority-65535 DROP rules. The device returns to its normal policy (allowlist enforcement or general WAN access). Any active lateral permits for this device remain in place and take effect again immediately.
 
+**curl**
+
+```bash
+curl -X POST http://127.0.0.1:8080/policy/release \
+  -H "Content-Type: application/json" \
+  -d '{"mac": "aa:bb:cc:dd:ee:ff"}'
+```
+
 **Request body**
 
 ```json
@@ -133,6 +161,12 @@ Remove isolation from a device. Deletes the priority-65535 DROP rules. The devic
 
 Returns all loaded device profiles and the current enforcement mode.
 
+**curl**
+
+```bash
+curl http://127.0.0.1:8080/policy/allowlists
+```
+
 **Response**
 
 ```json
@@ -155,6 +189,12 @@ Returns all loaded device profiles and the current enforcement mode.
 
 Reload device profiles from `device_profiles.json` without restarting the container. Applies new rules immediately to the running switch.
 
+**curl**
+
+```bash
+curl -X POST http://127.0.0.1:8080/policy/allowlists/reload
+```
+
 **Request body:** none required
 
 **Response**
@@ -174,6 +214,14 @@ Reload device profiles from `device_profiles.json` without restarting the contai
 
 Switch the enforcement mode between `learning` and `enforcing`.
 
+**curl**
+
+```bash
+curl -X POST http://127.0.0.1:8080/policy/allowlists/mode \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "enforcing"}'
+```
+
 **Request body**
 
 ```json
@@ -189,6 +237,14 @@ Valid values: `"learning"` or `"enforcing"`.
 ## `POST /policy/dns-cache`
 
 Update the in-memory DNS cache with domain-to-IP mappings. Used by the `dns_cache_updater` service.
+
+**curl**
+
+```bash
+curl -X POST http://127.0.0.1:8080/policy/dns-cache \
+  -H "Content-Type: application/json" \
+  -d '{"mappings": {"api.vendor.com": ["203.0.113.50", "203.0.113.51"], "cloud.vendor.com": ["198.51.100.10"]}}'
+```
 
 **Request body**
 
@@ -207,11 +263,23 @@ Update the in-memory DNS cache with domain-to-IP mappings. Used by the `dns_cach
 
 Returns the current contents of the DNS cache.
 
+**curl**
+
+```bash
+curl http://127.0.0.1:8080/policy/dns-cache
+```
+
 ---
 
 ## `GET /policy/denied-log`
 
 Returns recent denied connection attempts from profiled devices in enforcing mode. Useful for identifying destinations to add to allowlists.
+
+**curl**
+
+```bash
+curl http://127.0.0.1:8080/policy/denied-log
+```
 
 **Response**
 
@@ -235,6 +303,12 @@ Returns recent denied connection attempts from profiled devices in enforcing mod
 ## `GET /policy/lateral-permits`
 
 Returns all active lateral movement permits. Each permit grants bidirectional unicast IP communication between two specific devices, overriding the default anti-lateral-movement policy.
+
+**curl**
+
+```bash
+curl http://127.0.0.1:8080/policy/lateral-permits
+```
 
 **Response**
 
@@ -275,6 +349,14 @@ sudo sysctl -w net.ipv4.conf.br0.proxy_arp_pvlan=1
 ```
 
 Both devices must be known to the policy engine (i.e. they must appear in `GET /policy/devices`). If a device is listed but its `ip` field is `null`, the permit will be recorded but rules will not be installed until the device's IP is observed.
+
+**curl**
+
+```bash
+curl -X POST http://127.0.0.1:8080/policy/lateral-permits \
+  -H "Content-Type: application/json" \
+  -d '{"mac_a": "aa:bb:cc:dd:ee:ff", "mac_b": "11:22:33:44:55:66"}'
+```
 
 **Request body**
 
@@ -339,6 +421,14 @@ When `rules_installed` is `false`, the permit is stored and the rules will be in
 Revoke a lateral movement permit. Removes the four OpenFlow rules at priority 160 immediately. Subsequent traffic between the pair is dropped by the anti-lateral-movement rule at priority 150.
 
 The order of `mac_a` and `mac_b` does not matter.
+
+**curl**
+
+```bash
+curl -X DELETE http://127.0.0.1:8080/policy/lateral-permits \
+  -H "Content-Type: application/json" \
+  -d '{"mac_a": "aa:bb:cc:dd:ee:ff", "mac_b": "11:22:33:44:55:66"}'
+```
 
 **Request body**
 
