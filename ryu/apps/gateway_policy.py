@@ -1,6 +1,5 @@
 """
 IoT Security Gateway - SDN Policy Application
-Phase 5: Per-Pair Lateral Movement Permits
 
 Builds on Phase 4 (anomaly detection and automated isolation) by adding
 administrator-controlled per-pair lateral movement permits. By default all
