@@ -1146,17 +1146,27 @@ class GatewayPolicy(app_manager.RyuApp):
         # Warn if proxy ARP has not been enabled. Without it devices will
         # not be able to resolve each other's IP via ARP and no communication
         # will occur even with the permit rules in place.
+        PROXY_ARP_DIR = os.environ.get("PROXY_ARP_SYSCTL_DIR", "/host/br0-sysctl")
+
         try:
-            with open("/proc/sys/net/ipv4/conf/br0/proxy_arp") as f:
-                proxy_arp_enabled = f.read().strip() == "1"
+            with open(os.path.join(PROXY_ARP_DIR, "proxy_arp")) as f:
+                proxy_arp = f.read().strip() == "1"
+            with open(os.path.join(PROXY_ARP_DIR, "proxy_arp_pvlan")) as f:
+                proxy_arp_pvlan = f.read().strip() == "1"
+            proxy_arp_enabled = proxy_arp and proxy_arp_pvlan
         except IOError:
+            proxy_arp = False
+            proxy_arp_pvlan = False
             proxy_arp_enabled = False
 
         if not proxy_arp_enabled:
             LOG.warning(
-                "Lateral permit created but proxy ARP is NOT enabled on br0. "
+                "Lateral permit created but proxy ARP is NOT fully enabled on br0 "
+                "(proxy_arp=%s, proxy_arp_pvlan=%s). "
                 "Devices will not be able to resolve each other's IP address. "
-                "Enable it with: sudo sysctl -w net.ipv4.conf.br0.proxy_arp=1"
+                "Enable with: sudo sysctl -w net.ipv4.conf.br0.proxy_arp=1 "
+                "net.ipv4.conf.br0.proxy_arp_pvlan=1",
+                proxy_arp, proxy_arp_pvlan,
             )
 
         return {
@@ -1170,6 +1180,8 @@ class GatewayPolicy(app_manager.RyuApp):
                 "rules_installed": rules_installed,
             },
             "proxy_arp_enabled": proxy_arp_enabled,
+            "proxy_arp": proxy_arp,
+            "proxy_arp_pvlan": proxy_arp_pvlan,
         }
 
     def remove_lateral_permit(self, mac_a, mac_b):
