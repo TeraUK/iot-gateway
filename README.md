@@ -16,6 +16,8 @@ The key capabilities are:
 
 ## Installation and Documentation
 
+[Technical Documentation](https://iot-gateway.readthedocs.io/en/latest/)
+
 The recommended operating system is **Ubuntu Server 24.04.4 LTS**
 
 To build the documentation, run **installation/build-docs.sh**
