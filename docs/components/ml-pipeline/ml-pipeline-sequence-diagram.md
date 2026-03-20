@@ -256,6 +256,5 @@ pipeline -> pipeline : sleep(POLL_INTERVAL)\nRepeat from Stage 1
 
 deactivate pipeline
 
-@enduml
-                                                                        
+@enduml                                                                    
 ```

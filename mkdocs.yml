@@ -27,7 +27,8 @@ theme:
 
 plugins:
   - search
-  - kroki
+  - kroki:
+      http_method: POST
   - mkdocstrings:
       handlers:
         python:
