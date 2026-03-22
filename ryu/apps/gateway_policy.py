@@ -437,7 +437,7 @@ class GatewayPolicyController(ControllerBase):
             body=json.dumps(result, indent=2),
         )
     
-        @route("policy", BASE_URL + "/upstream-permits", methods=["GET"])
+    @route("policy", BASE_URL + "/upstream-permits", methods=["GET"])
     def get_upstream_permits(self, req, **kwargs):
         """Return all active upstream LAN permits."""
         body = json.dumps(self.app.get_upstream_permits(), indent=2)
@@ -580,7 +580,7 @@ class GatewayPolicy(app_manager.RyuApp):
         # The frozenset key ensures the pair is order-independent.
         self.lateral_permits = {}
 
-         # -- Upstream LAN permit state --------------------------------------
+        # -- Upstream LAN permit state --------------------------------------
         # Stores all active upstream LAN permits.
         # Key: (mac, dst_ip) tuple
         # Value: {
@@ -591,6 +591,9 @@ class GatewayPolicy(app_manager.RyuApp):
         # }
         self.upstream_permits = {}
 
+        # Load device profiles from config on startup.
+        self._load_profiles_from_file()
+
         # Pre-populate known_devices from the dnsmasq lease file so that
         # devices with cached leases are visible immediately without
         # needing a new DHCP exchange.
@@ -600,6 +603,7 @@ class GatewayPolicy(app_manager.RyuApp):
 
     def _load_profiles_from_file(self):
         """Load device profiles from the JSON config file."""
+        LOG.info("Loading device profiles from %s", DEVICE_PROFILES_PATH)
         if not os.path.exists(DEVICE_PROFILES_PATH):
             LOG.info(
                 "No device profiles config found at %s. "
