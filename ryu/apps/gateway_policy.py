@@ -32,24 +32,26 @@ Known limitation - multicast service discovery:
     to support full device discovery; this is documented as a future
     enhancement.
 
-Flow Rule Priority Scheme:
+Flow Rule Priority Scheme (updated for Phase 5):
     0     - Table-miss (send to controller, safety net)
     1     - Default deny (drop everything not explicitly allowed)
     50    - General WAN access (active for un-profiled devices)
-    75    - Upstream LAN block (drop traffic destined for RFC1918 ranges;
-            overridden by per-device allowlist entries at 500 for devices
-            that legitimately need to reach an upstream LAN server)
     100   - Per-device WAN intercept (send to controller for evaluation)
             and per-device inbound deny (block un-allowed return traffic)
-    200   - Essential services (DHCP, DNS, NTP, ARP)
-    500   - Per-device allowlist entries (reactive, installed on first
+    200   - Per-device allowlist entries (reactive, installed on first
             matching packet, with idle timeout)
+    400   - Upstream LAN block (drop traffic destined for RFC1918 ranges;
+            sits above the allowlist so that allowlist entries cannot
+            automatically grant upstream LAN access)
+    450   - Per-device upstream LAN permit (explicit API-only exception
+            to the RFC1918 block for a specific device/destination pair)
     550   - Anti-lateral-movement (block IoT-to-IoT via gateway routing;
             sits above the allowlist so that an allowlist entry for a
             192.168.50.x address can never grant lateral movement)
     600   - Per-pair lateral permit (bidirectional exception to rule 550;
-            can only be granted via the lateral permit API, not via a
-            device profile)
+            can only be granted via the lateral permit API)
+    800   - Essential services (DHCP, DNS, NTP, ARP; above anti-lateral
+            so that essential traffic is never blocked by that rule)
     65535 - Dynamic isolation (Phase 4)
 """
 
@@ -114,16 +116,17 @@ RFC1918_RANGES = [
 # -- Priority Levels --------------------------------------------------------
 # Higher number = higher priority = matched first in OVS.
 
-PRI_TABLE_MISS         = 0      # Safety net: send unmatched to controller
-PRI_DEFAULT_DENY       = 1      # Drop everything not explicitly allowed
-PRI_WAN_ACCESS         = 50     # General internet access (un-profiled devices)
-PRI_UPSTREAM_LAN_BLOCK = 75     # Block RFC1918 destinations by default
-PRI_DEVICE_INTERCEPT   = 100    # Per-device WAN intercept/deny (profiled devices)
-PRI_ESSENTIAL          = 200    # DHCP, DNS, NTP, ARP
-PRI_DEVICE_ALLOW       = 500    # Per-device allowlist entries (reactive)
-PRI_ANTI_LATERAL       = 550    # Block IoT-to-IoT via gateway routing
-PRI_LATERAL_PERMIT     = 600    # Per-pair exception to the anti-lateral rule
-PRI_ISOLATE            = 65535  # Dynamic device isolation (Phase 4)
+PRI_TABLE_MISS          = 0      # Safety net: send unmatched to controller
+PRI_DEFAULT_DENY        = 1      # Drop everything not explicitly allowed
+PRI_WAN_ACCESS          = 50     # General internet access (un-profiled devices)
+PRI_DEVICE_INTERCEPT    = 100    # Per-device WAN intercept/deny (profiled devices)
+PRI_DEVICE_ALLOW        = 200    # Per-device allowlist entries (above intercept)
+PRI_UPSTREAM_LAN_BLOCK  = 400    # Block RFC1918 (above allowlist - allowlist cannot override)
+PRI_UPSTREAM_PERMIT     = 450    # Per-device upstream LAN permit (explicit API only)
+PRI_ANTI_LATERAL        = 550    # Block IoT-to-IoT via gateway routing
+PRI_LATERAL_PERMIT      = 600    # Per-pair exception to anti-lateral (API only)
+PRI_ESSENTIAL           = 800    # DHCP, DNS, NTP, ARP
+PRI_ISOLATE             = 65535  # Dynamic device isolation
 
 # Default idle timeout for reactive allowlist flow rules (seconds).
 # When no matching traffic flows for this duration, OVS removes the
@@ -162,24 +165,26 @@ def cidr_contains(cidr_str, ip_str):
 # Exposes endpoints for policy status, device management, allowlist
 # management, DNS cache updates, and lateral movement permits.
 #
-# Phase 2 endpoints:
 #   GET  /policy/status                - engine state
 #   GET  /policy/devices               - known MACs on the WiFi port
 #   POST /policy/isolate               - quarantine a device by MAC
 #   POST /policy/release               - remove quarantine
 #
-# Phase 3 endpoints:
 #   GET  /policy/allowlists            - current device profiles and mode
 #   POST /policy/allowlists/reload     - reload profiles from config file
 #   POST /policy/allowlists/mode       - switch between learning/enforcing
+#
 #   POST /policy/dns-cache             - update domain-to-IP mappings
 #   GET  /policy/dns-cache             - view current DNS cache
 #   GET  /policy/denied-log            - recent denied connection attempts
 #
-# Phase 5 endpoints:
-#   GET    /policy/lateral-permits     - list all active permits
-#   POST   /policy/lateral-permits     - add a permit between two devices
-#   DELETE /policy/lateral-permits     - remove a permit between two devices
+#   GET    /policy/lateral-permits     - list all active lateral permits
+#   POST   /policy/lateral-permits     - add a lateral permit between two devices
+#   DELETE /policy/lateral-permits     - remove a lateral permit
+#
+#   GET    /policy/upstream-permits    - list all active upstream LAN permits
+#   POST   /policy/upstream-permits    - grant a device access to an upstream LAN IP
+#   DELETE /policy/upstream-permits    - revoke an upstream LAN permit
 
 class GatewayPolicyController(ControllerBase):
     """REST API controller for the gateway policy app."""
@@ -187,8 +192,6 @@ class GatewayPolicyController(ControllerBase):
     def __init__(self, req, link, data, **config):
         super().__init__(req, link, data, **config)
         self.app = data[POLICY_API_INSTANCE]
-
-    # -- Phase 2 endpoints --------------------------------------------------
 
     @route("policy", BASE_URL + "/status", methods=["GET"])
     def get_status(self, req, **kwargs):
@@ -240,8 +243,6 @@ class GatewayPolicyController(ControllerBase):
             charset="utf-8",
             body=json.dumps(result, indent=2),
         )
-
-    # -- Phase 3 endpoints --------------------------------------------------
 
     @route("policy", BASE_URL + "/allowlists", methods=["GET"])
     def get_allowlists(self, req, **kwargs):
@@ -330,8 +331,6 @@ class GatewayPolicyController(ControllerBase):
         """Return recent denied connection attempts from profiled devices."""
         body = json.dumps(self.app.get_denied_log(), indent=2)
         return Response(content_type="application/json", charset="utf-8", body=body)
-
-    # -- Phase 5 endpoints --------------------------------------------------
 
     @route("policy", BASE_URL + "/lateral-permits", methods=["GET"])
     def get_lateral_permits(self, req, **kwargs):
@@ -437,6 +436,82 @@ class GatewayPolicyController(ControllerBase):
             charset="utf-8",
             body=json.dumps(result, indent=2),
         )
+    
+        @route("policy", BASE_URL + "/upstream-permits", methods=["GET"])
+    def get_upstream_permits(self, req, **kwargs):
+        """Return all active upstream LAN permits."""
+        body = json.dumps(self.app.get_upstream_permits(), indent=2)
+        return Response(content_type="application/json", charset="utf-8", body=body)
+
+    @route("policy", BASE_URL + "/upstream-permits", methods=["POST"])
+    def add_upstream_permit(self, req, **kwargs):
+        """
+        Grant a specific IoT device access to a specific upstream LAN IP.
+
+        The destination must be a private RFC1918 address. Public IPs are
+        already reachable via the general WAN access rules and do not need
+        an upstream permit.
+
+        Expected JSON body::
+
+            {
+                "mac":    "aa:bb:cc:dd:ee:ff",
+                "dst_ip": "192.168.1.50"
+            }
+        """
+        try:
+            body   = json.loads(req.body)
+            mac    = body.get("mac", "").lower()
+            dst_ip = body.get("dst_ip", "").strip()
+        except (ValueError, AttributeError):
+            return Response(status=400, charset="utf-8", body="Invalid JSON")
+
+        if not mac:
+            return Response(status=400, charset="utf-8", body='Missing "mac" field')
+        if not dst_ip:
+            return Response(status=400, charset="utf-8", body='Missing "dst_ip" field')
+
+        result = self.app.add_upstream_permit(mac, dst_ip)
+        status = 200 if result.get("success") else 400
+        return Response(
+            status=status,
+            content_type="application/json",
+            charset="utf-8",
+            body=json.dumps(result, indent=2),
+        )
+
+    @route("policy", BASE_URL + "/upstream-permits", methods=["DELETE"])
+    def remove_upstream_permit(self, req, **kwargs):
+        """
+        Revoke an upstream LAN permit for a specific device/destination pair.
+
+        Expected JSON body::
+
+            {
+                "mac":    "aa:bb:cc:dd:ee:ff",
+                "dst_ip": "192.168.1.50"
+            }
+        """
+        try:
+            body   = json.loads(req.body)
+            mac    = body.get("mac", "").lower()
+            dst_ip = body.get("dst_ip", "").strip()
+        except (ValueError, AttributeError):
+            return Response(status=400, charset="utf-8", body="Invalid JSON")
+
+        if not mac:
+            return Response(status=400, charset="utf-8", body='Missing "mac" field')
+        if not dst_ip:
+            return Response(status=400, charset="utf-8", body='Missing "dst_ip" field')
+
+        result = self.app.remove_upstream_permit(mac, dst_ip)
+        status = 200 if result.get("success") else 400
+        return Response(
+            status=status,
+            content_type="application/json",
+            charset="utf-8",
+            body=json.dumps(result, indent=2),
+        )
 
 
 # -- Policy Application -----------------------------------------------------
@@ -505,8 +580,16 @@ class GatewayPolicy(app_manager.RyuApp):
         # The frozenset key ensures the pair is order-independent.
         self.lateral_permits = {}
 
-        # Load device profiles from config on startup.
-        self._load_profiles_from_file()
+         # -- Upstream LAN permit state --------------------------------------
+        # Stores all active upstream LAN permits.
+        # Key: (mac, dst_ip) tuple
+        # Value: {
+        #     "mac": str,          - device MAC address
+        #     "dst_ip": str,       - permitted upstream LAN destination IP
+        #     "created_at": str,   - ISO-8601 creation timestamp
+        #     "rules_installed": bool
+        # }
+        self.upstream_permits = {}
 
         # Pre-populate known_devices from the dnsmasq lease file so that
         # devices with cached leases are visible immediately without
@@ -1366,6 +1449,209 @@ class GatewayPolicy(app_manager.RyuApp):
             ipv4_src=ip_a,
         ))
 
+    # -- Upstream LAN permits -----------------------------------------------
+
+    def get_upstream_permits(self):
+        """
+        Return all active upstream LAN permits.
+
+        Each entry includes the device MAC, the permitted upstream
+        destination IP, the creation timestamp, and whether the
+        corresponding OpenFlow rules are currently installed.
+        """
+        result = []
+        for (mac, dst_ip), permit in self.upstream_permits.items():
+            result.append({
+                "mac":             permit["mac"],
+                "dst_ip":          permit["dst_ip"],
+                "created_at":      permit["created_at"],
+                "rules_installed": permit["rules_installed"],
+            })
+        return {
+            "permits": result,
+            "total":   len(result),
+        }
+
+    def add_upstream_permit(self, mac, dst_ip):
+        """
+        Grant a specific IoT device access to a specific upstream LAN IP.
+
+        Installs two OpenFlow rules at PRI_UPSTREAM_PERMIT (450), which
+        sits above the RFC1918 block at PRI_UPSTREAM_LAN_BLOCK (400):
+
+        1. Outbound: ``in_port=wifi, eth_src=mac, ipv4_dst=dst_ip`` → LOCAL
+        2. Inbound:  ``in_port=LOCAL, eth_dst=mac, ipv4_src=dst_ip`` → wifi
+
+        The device must already be known to the policy engine. The
+        destination IP must be a private RFC1918 address; public IPs are
+        already reachable via the general WAN access rules.
+
+        Returns a dict with ``success`` (bool) and either an ``error``
+        string or a ``permit`` summary.
+        """
+        mac = mac.lower()
+        key = (mac, dst_ip)
+
+        if key in self.upstream_permits:
+            return {
+                "success": False,
+                "error": f"An upstream permit for {mac} -> {dst_ip} already exists.",
+            }
+
+        if mac not in self.known_devices:
+            return {
+                "success": False,
+                "error": f"{mac} is not a known device.",
+            }
+
+        # Validate that the destination falls within an RFC1918 range.
+        in_rfc1918 = False
+        for network, mask in RFC1918_RANGES:
+            prefix_len = sum(bin(int(o)).count("1") for o in mask.split("."))
+            if cidr_contains(f"{network}/{prefix_len}", dst_ip):
+                in_rfc1918 = True
+                break
+
+        if not in_rfc1918:
+            return {
+                "success": False,
+                "error": (
+                    f"{dst_ip} is not in an RFC1918 range. Public destinations "
+                    "are already reachable and do not require an upstream permit."
+                ),
+            }
+
+        ts = datetime.now(timezone.utc).isoformat()
+        self.upstream_permits[key] = {
+            "mac":             mac,
+            "dst_ip":          dst_ip,
+            "created_at":      ts,
+            "rules_installed": False,
+        }
+
+        rules_installed = False
+        if self.datapath and self.wifi_port:
+            self._install_upstream_permit_rules(mac, dst_ip)
+            self.upstream_permits[key]["rules_installed"] = True
+            rules_installed = True
+            LOG.info("Upstream permit ADDED: %s -> %s", mac, dst_ip)
+        else:
+            LOG.warning(
+                "Upstream permit recorded for %s -> %s but switch is not "
+                "connected; rules will be installed on next connection.",
+                mac, dst_ip,
+            )
+
+        return {
+            "success": True,
+            "permit": {
+                "mac":             mac,
+                "dst_ip":          dst_ip,
+                "created_at":      ts,
+                "rules_installed": rules_installed,
+            },
+        }
+
+    def remove_upstream_permit(self, mac, dst_ip):
+        """
+        Revoke an upstream LAN permit for a specific device/destination pair.
+
+        Removes the OpenFlow rules at PRI_UPSTREAM_PERMIT (450) immediately.
+        Subsequent traffic from the device to that destination is dropped by
+        the RFC1918 block rule at PRI_UPSTREAM_LAN_BLOCK (400).
+        """
+        mac = mac.lower()
+        key = (mac, dst_ip)
+
+        if key not in self.upstream_permits:
+            return {
+                "success": False,
+                "error": f"No upstream permit exists for {mac} -> {dst_ip}.",
+            }
+
+        permit = self.upstream_permits[key]
+        if permit["rules_installed"]:
+            self._remove_upstream_permit_rules(mac, dst_ip)
+            LOG.info("Upstream permit REMOVED: %s -> %s", mac, dst_ip)
+
+        del self.upstream_permits[key]
+        return {
+            "success": True,
+            "mac":    mac,
+            "dst_ip": dst_ip,
+        }
+
+    def _install_upstream_permit_rules(self, mac, dst_ip):
+        """
+        Install two OpenFlow rules at PRI_UPSTREAM_PERMIT (450) that allow
+        a specific device to reach a specific upstream LAN IP, overriding
+        the RFC1918 block at PRI_UPSTREAM_LAN_BLOCK (400).
+
+        Rules installed:
+          1. Outbound: in_port=wifi, eth_src=mac, ipv4_dst=dst_ip → LOCAL
+          2. Inbound:  in_port=LOCAL, eth_dst=mac, ipv4_src=dst_ip → wifi
+        """
+        if not self.datapath or not self.wifi_port:
+            return
+
+        dp      = self.datapath
+        parser  = dp.ofproto_parser
+        ofproto = dp.ofproto
+
+        # Outbound: device -> upstream server
+        match = parser.OFPMatch(
+            in_port=self.wifi_port,
+            eth_src=mac,
+            eth_type=0x0800,
+            ipv4_dst=dst_ip,
+        )
+        actions = [parser.OFPActionOutput(ofproto.OFPP_LOCAL)]
+        self._add_flow(
+            dp, PRI_UPSTREAM_PERMIT, match, actions,
+            tag=f"upstream-permit-out-{mac[:8]}->{dst_ip}",
+        )
+
+        # Inbound: upstream server -> device
+        match = parser.OFPMatch(
+            in_port=ofproto.OFPP_LOCAL,
+            eth_dst=mac,
+            eth_type=0x0800,
+            ipv4_src=dst_ip,
+        )
+        actions = [parser.OFPActionOutput(self.wifi_port)]
+        self._add_flow(
+            dp, PRI_UPSTREAM_PERMIT, match, actions,
+            tag=f"upstream-permit-in-{mac[:8]}<-{dst_ip}",
+        )
+
+    def _remove_upstream_permit_rules(self, mac, dst_ip):
+        """
+        Remove the two OpenFlow rules for an upstream LAN permit.
+
+        Uses the same match criteria as _install_upstream_permit_rules
+        to ensure the correct rules are deleted from OVS.
+        """
+        if not self.datapath or not self.wifi_port:
+            return
+
+        dp      = self.datapath
+        parser  = dp.ofproto_parser
+        ofproto = dp.ofproto
+
+        self._delete_flow(dp, PRI_UPSTREAM_PERMIT, parser.OFPMatch(
+            in_port=self.wifi_port,
+            eth_src=mac,
+            eth_type=0x0800,
+            ipv4_dst=dst_ip,
+        ))
+
+        self._delete_flow(dp, PRI_UPSTREAM_PERMIT, parser.OFPMatch(
+            in_port=ofproto.OFPP_LOCAL,
+            eth_dst=mac,
+            eth_type=0x0800,
+            ipv4_src=dst_ip,
+        ))    
+
     def _refresh_lateral_permits_for_mac(self, mac, new_ip):
         """
         Called when a device's IP address changes (e.g. after a new DHCP
@@ -1537,27 +1823,13 @@ class GatewayPolicy(app_manager.RyuApp):
         actions = [parser.OFPActionOutput(wifi)]
         self._add_flow(datapath, PRI_ESSENTIAL, match, actions, tag="ntp-response")
 
-        # 7. Anti-lateral-movement: drop IoT-to-IoT routed traffic (priority 550).
-        # Sits above the per-device allowlist (500) so that an allowlist entry
-        # for a 192.168.50.x address can never grant lateral movement. Per-pair
-        # lateral permits at priority 600 override this rule for explicitly
-        # permitted pairs; those can only be created via the lateral permit API.
-        match = parser.OFPMatch(
-            in_port=wifi, eth_type=0x0800,
-            ipv4_dst=(IOT_SUBNET, IOT_SUBNET_MASK),
-        )
-        self._add_flow(
-            datapath, PRI_ANTI_LATERAL, match, actions=[], tag="anti-lateral"
-        )
-
-        # 8. Upstream LAN block: drop traffic destined for any RFC1918 range
-        #    (priority 75). Sits below the per-device allowlist (500) so that
-        #    a device with an explicit allowlist entry for an upstream LAN
-        #    server can still reach it. Devices with no matching allowlist
-        #    entry, including all devices in learning mode, cannot reach the
-        #    upstream LAN. The IoT subnet (192.168.50.0/24) falls within the
-        #    192.168.0.0/16 range but is handled by the higher-priority
-        #    anti-lateral and essential service rules before this is reached.
+        # 7. Upstream LAN block: drop traffic destined for any RFC1918 range
+        #    (priority 400). Sits above the per-device allowlist (200) so that
+        #    allowlist entries can never automatically grant upstream LAN access.
+        #    Upstream LAN access requires an explicit upstream permit (API only),
+        #    which installs rules at priority 450. The IoT subnet
+        #    (192.168.50.0/24) falls within 192.168.0.0/16 but is handled by
+        #    the higher-priority essential service and anti-lateral rules first.
         for network, mask in RFC1918_RANGES:
             match = parser.OFPMatch(
                 in_port=wifi,
@@ -1568,6 +1840,19 @@ class GatewayPolicy(app_manager.RyuApp):
                 datapath, PRI_UPSTREAM_LAN_BLOCK, match, actions=[],
                 tag=f"upstream-lan-block-{network}",
             )
+
+        # 8. Anti-lateral-movement: drop IoT-to-IoT routed traffic (priority 550).
+        # Sits above the per-device allowlist (200) so that an allowlist entry
+        # for a 192.168.50.x address can never grant lateral movement. Per-pair
+        # lateral permits at priority 600 override this rule for explicitly
+        # permitted pairs; those can only be created via the lateral permit API.
+        match = parser.OFPMatch(
+            in_port=wifi, eth_type=0x0800,
+            ipv4_dst=(IOT_SUBNET, IOT_SUBNET_MASK),
+        )
+        self._add_flow(
+            datapath, PRI_ANTI_LATERAL, match, actions=[], tag="anti-lateral"
+        )
 
         # 9. General WAN access: allow all other IPv4 in/out (priority 50).
         # Profiled devices in enforcing mode are intercepted at priority 100
@@ -1587,7 +1872,16 @@ class GatewayPolicy(app_manager.RyuApp):
                 self._install_device_intercept_rules(mac)
                 enforced_count += 1
 
-        # 11. Reinstall any lateral permits that survived a controller restart
+        # 11. Reinstall any upstream LAN permits that survived a controller restart.
+        for (mac, dst_ip), permit in list(self.upstream_permits.items()):
+            self._install_upstream_permit_rules(mac, dst_ip)
+            self.upstream_permits[(mac, dst_ip)]["rules_installed"] = True
+            LOG.info(
+                "Upstream permit rules reinstalled on reconnect: %s -> %s",
+                mac, dst_ip,
+            )
+
+        # 12. Reinstall any lateral permits that survived a controller restart.
         # On reconnect the OVS flow table is reset, so all dynamic rules must
         # be reinstalled. The permit metadata is preserved in self.lateral_permits.
         for key, permit in self.lateral_permits.items():

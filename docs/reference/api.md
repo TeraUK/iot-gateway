@@ -331,13 +331,13 @@ curl http://127.0.0.1:8080/policy/lateral-permits
 | Field | Description |
 |-------|-------------|
 | `ip_a` / `ip_b` | The IP addresses at which the OpenFlow rules are currently keyed. Updated automatically if a device's IP changes. `null` if the IP was not yet known when the permit was created. |
-| `rules_installed` | Whether the four OpenFlow rules at priority 160 are currently active in OVS. `false` if one or both device IPs are unknown, or if the OVS switch is not connected. |
+| `rules_installed` | Whether the four OpenFlow rules at priority 600 are currently active in OVS. `false` if one or both device IPs are unknown, or if the OVS switch is not connected. |
 
 ---
 
 ## `POST /policy/lateral-permits`
 
-Grant bidirectional unicast IP communication between two IoT devices. Installs four OpenFlow rules at priority 160 that override the anti-lateral-movement drop at priority 150 for the specific permitted pair.
+Grant bidirectional unicast IP communication between two IoT devices. Installs four OpenFlow rules at priority 600 that override the anti-lateral-movement drop at priority 550 for the specific permitted pair.
 
 **Pre-requisites:**
 
@@ -418,7 +418,7 @@ When `rules_installed` is `false`, the permit is stored and the rules will be in
 
 ## `DELETE /policy/lateral-permits`
 
-Revoke a lateral movement permit. Removes the four OpenFlow rules at priority 160 immediately. Subsequent traffic between the pair is dropped by the anti-lateral-movement rule at priority 150.
+Revoke a lateral movement permit. Removes the four OpenFlow rules at priority 600 immediately. Subsequent traffic between the pair is dropped by the anti-lateral-movement rule at priority 550.
 
 The order of `mac_a` and `mac_b` does not matter.
 
@@ -450,3 +450,131 @@ curl -X DELETE http://127.0.0.1:8080/policy/lateral-permits \
 ```
 
 **Error responses:** `400` if either MAC field is missing, or if no permit exists between the specified pair.
+
+## `GET /policy/upstream-permits`
+
+Returns all active upstream LAN permits.
+
+**curl**
+
+```bash
+curl -s http://127.0.0.1:8080/policy/upstream-permits | python3 -m json.tool
+```
+
+**Response**
+
+```json
+{
+    "permits": [
+        {
+            "mac": "aa:bb:cc:dd:ee:ff",
+            "dst_ip": "192.168.1.50",
+            "created_at": "2026-03-22T18:00:00+00:00",
+            "rules_installed": true
+        }
+    ],
+    "total": 1
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `mac` | MAC address of the IoT device that has been granted access |
+| `dst_ip` | The upstream LAN IP the device is permitted to reach |
+| `created_at` | ISO-8601 timestamp when the permit was created |
+| `rules_installed` | Whether the two OpenFlow rules at priority 450 are currently active. `false` if the OVS switch is not connected |
+
+---
+
+## `POST /policy/upstream-permits`
+
+Grant a specific IoT device access to a specific upstream LAN IP. Installs
+two OpenFlow rules at priority 450, which override the RFC1918 block at
+priority 400 for this specific device/destination pair only.
+
+The destination must be a private RFC1918 address (`10.0.0.0/8`,
+`172.16.0.0/12`, or `192.168.0.0/16`). Public IPs are already reachable
+via the general WAN access rules and do not require a permit.
+
+**curl**
+
+```bash
+curl -X POST http://127.0.0.1:8080/policy/upstream-permits \
+  -H "Content-Type: application/json" \
+  -d '{"mac": "aa:bb:cc:dd:ee:ff", "dst_ip": "192.168.1.50"}'
+```
+
+**Request body**
+
+```json
+{
+    "mac":    "aa:bb:cc:dd:ee:ff",
+    "dst_ip": "192.168.1.50"
+}
+```
+
+**Response (success)**
+
+```json
+{
+    "success": true,
+    "permit": {
+        "mac":             "aa:bb:cc:dd:ee:ff",
+        "dst_ip":          "192.168.1.50",
+        "created_at":      "2026-03-22T18:00:00+00:00",
+        "rules_installed": true
+    }
+}
+```
+
+**Error responses:**
+
+| Status | Condition |
+|--------|-----------|
+| `400` | `mac` or `dst_ip` missing from request body |
+| `400` | The MAC is not a known device |
+| `400` | The destination IP is not in an RFC1918 range |
+| `400` | A permit for this device/destination pair already exists |
+
+---
+
+## `DELETE /policy/upstream-permits`
+
+Revoke an upstream LAN permit for a specific device/destination pair.
+Removes the two OpenFlow rules at priority 450 immediately. Subsequent
+traffic from the device to that IP is dropped by the RFC1918 block rule
+at priority 400.
+
+**curl**
+
+```bash
+curl -X DELETE http://127.0.0.1:8080/policy/upstream-permits \
+  -H "Content-Type: application/json" \
+  -d '{"mac": "aa:bb:cc:dd:ee:ff", "dst_ip": "192.168.1.50"}'
+```
+
+**Request body**
+
+```json
+{
+    "mac":    "aa:bb:cc:dd:ee:ff",
+    "dst_ip": "192.168.1.50"
+}
+```
+
+**Response (success)**
+
+```json
+{
+    "success": true,
+    "mac":    "aa:bb:cc:dd:ee:ff",
+    "dst_ip": "192.168.1.50"
+}
+```
+
+**Error responses:**
+
+| Status | Condition |
+|--------|-----------|
+| `400` | `mac` or `dst_ip` missing from request body |
+| `400` | No permit exists for this device/destination pair |
