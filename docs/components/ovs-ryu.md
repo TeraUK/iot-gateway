@@ -60,21 +60,23 @@ On switch connection, the app installs proactive flow rules in this order:
 4. **DHCP** (priority 200) - permit DHCP between devices and the gateway. Both the request (port 67) and response (port 68) rules also send a copy to the controller for DHCP snooping (see below).
 5. **DNS** (priority 200) - permit DNS queries to `192.168.50.1` (intercepted by nftables to AdGuard).
 6. **NTP** (priority 200) - permit NTP queries and responses.
-7. **Anti-lateral-movement** (priority 150) - drop any IPv4 traffic from `wlp3s0` destined for `192.168.50.0/24`. This prevents IoT devices from reaching each other via the gateway's routing.
-8. **General WAN access** (priority 50) - allow all IPv4 traffic in and out (overridden by per-device intercept rules in Phase 3).
-9. **Per-device intercept** (priority 100, enforcing mode only) - for profiled devices, send unmatched flows to the controller for allowlist evaluation before installing a forward or drop rule.
-10. **Lateral permit rules** (priority 160, dynamic) - reinstalled on reconnect for any permits that existed before the controller restarted. See [Per-pair lateral permits](#per-pair-lateral-permits) below.
+7. **Anti-lateral-movement** (priority 550) - drop any IPv4 traffic from `wlp3s0` destined for `192.168.50.0/24`. Sits above the per-device allowlist (500), so an allowlist entry for a `192.168.50.x` address can never grant lateral movement. Lateral movement can only be permitted via the lateral permit API.
+8. **Upstream LAN block** (priority 75) - drop any IPv4 traffic from `wlp3s0` destined for an RFC1918 private address range (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`). Sits below the per-device allowlist (500), so a device with an explicit allowlist entry for an upstream LAN server can still reach it. All other devices, including those in learning mode, cannot reach the upstream LAN by default.
+9. **General WAN access** (priority 50) - allow all IPv4 traffic in and out (overridden by per-device intercept rules in Phase 3).
+10. **Per-device intercept** (priority 100, enforcing mode only) - for profiled devices, send unmatched flows to the controller for allowlist evaluation before installing a forward or drop rule.
+11. **Lateral permit rules** (priority 600, dynamic) - reinstalled on reconnect for any permits that existed before the controller restarted. See [Per-pair lateral permits](#per-pair-lateral-permits) below.
 
 ### Flow rule priority scheme
 
 | Priority | Rule type | Description |
 |----------|-----------|-------------|
 | 65535 | Isolation | Per-device DROP rule (dynamic, installed on alert) |
-| 500 | Allowlist | Per-device destination FORWARD rules (Phase 3, reactive) |
+| 600 | Lateral permit | Per-pair exception to the anti-lateral-movement rule (dynamic, API-controlled only) |
+| 550 | Anti-lateral-movement | Drops IoT-to-IoT routed traffic via gateway. Sits above the allowlist — an allowlist entry cannot grant lateral movement |
+| 500 | Allowlist | Per-device destination FORWARD rules (Phase 3, reactive). Can include upstream LAN addresses for devices that legitimately need them |
 | 200 | Essential services | DHCP, DNS, NTP, ARP - universally permitted |
-| 160 | Lateral permit | Per-pair exception to the anti-lateral-movement rule (dynamic) |
-| 150 | Anti-lateral-movement | Drops IoT to IoT routed traffic via gateway |
 | 100 | Per-device intercept | Matches profiled devices in enforcing mode |
+| 75 | Upstream LAN block | Drops traffic destined for RFC1918 ranges by default. Sits below the allowlist — a specific upstream LAN IP can be granted via a device allowlist entry |
 | 50 | General WAN | Allows all devices to reach the internet (overridden by per-device rules) |
 | 1 | Default deny | Drops everything not explicitly permitted |
 | 0 | Table-miss | Sends unmatched packets to controller |
