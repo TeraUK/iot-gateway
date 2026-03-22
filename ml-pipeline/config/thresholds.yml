@@ -69,8 +69,8 @@ rules:
   failed_conn_warning_rate: 0.50
 
   # Flag as WARNING if mean DNS query name entropy exceeds this value.
-  # Values above 3.5 are indicative of DGA or DNS tunnelling.
-  dns_entropy_warning: 4
+  # Values above 4.5 are indicative of DGA or DNS tunnelling.
+  dns_entropy_warning: 4.5
 
   # Flag as CRITICAL if mean DNS query name entropy exceeds this value.
   dns_entropy_critical: 5
