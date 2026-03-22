@@ -12,7 +12,7 @@ RestartSec=10
 
 # Environment variables (adjust as needed).
 Environment=ZEEK_CONTAINER=zeek
-Environment=ZEEK_DNS_LOG=/opt/zeek-logs/current/dns.log
+Environment=ZEEK_DNS_LOG=/opt/zeek-logs/dns.log
 Environment=RYU_API_URL=http://127.0.0.1:8080
 Environment=POLL_INTERVAL=10
 Environment=FULL_REFRESH_INTERVAL=300

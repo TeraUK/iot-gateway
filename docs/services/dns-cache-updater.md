@@ -72,8 +72,8 @@ systemd unit file under the `[Service]` section.
 | Variable              | Default                          | Description                                                         |
 |-----------------------|----------------------------------|---------------------------------------------------------------------|
 | `ZEEK_CONTAINER`      | `zeek`                           | Name of the Docker container running Zeek.                          |
-| `ZEEK_DNS_LOG`        | `/opt/zeek-logs/current/dns.log` | Path to dns.log inside the Zeek container.                          |
-| `RYU_API_URL`         | `http://127.0.0.1:8080`         | Base URL for the Ryu REST API.                                      |
+| `ZEEK_DNS_LOG`        | `/opt/zeek-logs/dns.log`         | Path to dns.log inside the Zeek container.                          |
+| `RYU_API_URL`         | `http://127.0.0.1:8080`          | Base URL for the Ryu REST API.                                      |
 | `POLL_INTERVAL`       | `10`                             | Seconds between checks for new dns.log entries.                     |
 | `FULL_REFRESH_INTERVAL`| `300`                           | Seconds between full re-fetches of the allowed domains list and batch pushes of all accumulated mappings. |
 
@@ -133,7 +133,7 @@ timestamps. If the cache is empty, check:
 
 - The service is running: `sudo systemctl status dns-cache-updater`
 - The Zeek container is running and producing dns.log entries:
-  `docker exec zeek ls -la /opt/zeek-logs/current/dns.log`
+  `docker exec zeek ls -la /opt/zeek-logs/dns.log`
 - Device profiles have `allowed_domains` entries:
   `curl -s http://127.0.0.1:8080/policy/allowlists | python3 -m json.tool`
 - The service logs for errors:

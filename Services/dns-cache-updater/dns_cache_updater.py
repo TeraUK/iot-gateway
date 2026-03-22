@@ -46,7 +46,7 @@ LOG = logging.getLogger(__name__)
 # Path to Zeek's current dns.log file inside the container.
 # The script runs on the host and uses docker exec to read it.
 ZEEK_CONTAINER = os.environ.get("ZEEK_CONTAINER", "zeek")
-ZEEK_DNS_LOG = os.environ.get("ZEEK_DNS_LOG", "/opt/zeek-logs/current/dns.log")
+ZEEK_DNS_LOG = os.environ.get("ZEEK_DNS_LOG", "/opt/zeek-logs/dns.log")
 
 # Ryu REST API.
 RYU_API_URL = os.environ.get("RYU_API_URL", "http://127.0.0.1:8080")
