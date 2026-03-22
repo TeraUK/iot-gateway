@@ -5,7 +5,7 @@ Builds on Phase 4 (anomaly detection and automated isolation) by adding
 administrator-controlled per-pair lateral movement permits. By default all
 IoT-to-IoT communication remains blocked by the anti-lateral-movement rule.
 An administrator may POST to the lateral-permits endpoint to install a
-priority-160 exception that allows bidirectional unicast IP traffic between
+priority-600 exception that allows bidirectional unicast IP traffic between
 a specific pair of devices.
 
 Pre-requisite for lateral permits to function:
@@ -405,7 +405,7 @@ class GatewayPolicyController(ControllerBase):
 
         Removes the OpenFlow exception rules immediately. Subsequent
         traffic between the pair is dropped by the anti-lateral-movement
-        rule at priority 150.
+        rule at priority 550.
 
         Expected JSON body::
 
@@ -1082,8 +1082,8 @@ class GatewayPolicy(app_manager.RyuApp):
         """
         Grant bidirectional unicast communication between two IoT devices.
 
-        Installs four OpenFlow rules at priority PRI_LATERAL_PERMIT (160),
-        which is above the anti-lateral-movement drop rule at 150:
+        Installs four OpenFlow rules at priority PRI_LATERAL_PERMIT (600),
+        which is above the anti-lateral-movement drop rule at 550:
 
         - mac_a → ip_b  (outbound from A)
         - mac_b → ip_a  (outbound from B)
@@ -1209,7 +1209,7 @@ class GatewayPolicy(app_manager.RyuApp):
 
         Removes the OpenFlow exception rules immediately. Subsequent
         traffic between the pair is dropped by the anti-lateral-movement
-        rule at priority 150. The order of mac_a and mac_b does not matter.
+        rule at priority 550. The order of mac_a and mac_b does not matter.
         """
         key = frozenset({mac_a, mac_b})
 
@@ -1242,9 +1242,9 @@ class GatewayPolicy(app_manager.RyuApp):
 
     def _install_lateral_permit_rules(self, mac_a, mac_b, ip_a, ip_b):
         """
-        Install four OpenFlow rules at PRI_LATERAL_PERMIT (160) that
+        Install four OpenFlow rules at PRI_LATERAL_PERMIT (600) that
         allow bidirectional unicast traffic between mac_a/ip_a and
-        mac_b/ip_b, overriding the anti-lateral-movement rule at 150.
+        mac_b/ip_b, overriding the anti-lateral-movement rule at 550.
 
         Rules installed:
 
