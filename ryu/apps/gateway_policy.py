@@ -32,17 +32,24 @@ Known limitation - multicast service discovery:
     to support full device discovery; this is documented as a future
     enhancement.
 
-Flow Rule Priority Scheme (updated for Phase 5):
+Flow Rule Priority Scheme:
     0     - Table-miss (send to controller, safety net)
     1     - Default deny (drop everything not explicitly allowed)
     50    - General WAN access (active for un-profiled devices)
+    75    - Upstream LAN block (drop traffic destined for RFC1918 ranges;
+            overridden by per-device allowlist entries at 500 for devices
+            that legitimately need to reach an upstream LAN server)
     100   - Per-device WAN intercept (send to controller for evaluation)
             and per-device inbound deny (block un-allowed return traffic)
-    150   - Anti-lateral-movement (block IoT-to-IoT via gateway routing)
-    160   - Per-pair lateral permit (bidirectional exception to rule 150)
     200   - Essential services (DHCP, DNS, NTP, ARP)
     500   - Per-device allowlist entries (reactive, installed on first
             matching packet, with idle timeout)
+    550   - Anti-lateral-movement (block IoT-to-IoT via gateway routing;
+            sits above the allowlist so that an allowlist entry for a
+            192.168.50.x address can never grant lateral movement)
+    600   - Per-pair lateral permit (bidirectional exception to rule 550;
+            can only be granted via the lateral permit API, not via a
+            device profile)
     65535 - Dynamic isolation (Phase 4)
 """
 
@@ -93,18 +100,30 @@ DNSMASQ_LEASES_PATH = os.environ.get(
     "/var/lib/misc/dnsmasq.leases",
 )
 
+# RFC1918 private address ranges. Traffic from the IoT subnet destined for
+# any of these ranges is dropped by default at PRI_UPSTREAM_LAN_BLOCK (75).
+# Per-device allowlist entries at PRI_DEVICE_ALLOW (500) sit above this rule
+# and can override it for devices that legitimately need to reach an upstream
+# LAN server (e.g. a sensor feeding data to an on-premises monitoring host).
+RFC1918_RANGES = [
+    ("10.0.0.0",    "255.0.0.0"),    # 10.0.0.0/8
+    ("172.16.0.0",  "255.240.0.0"),  # 172.16.0.0/12
+    ("192.168.0.0", "255.255.0.0"),  # 192.168.0.0/16
+]
+
 # -- Priority Levels --------------------------------------------------------
 # Higher number = higher priority = matched first in OVS.
 
-PRI_TABLE_MISS      = 0      # Safety net: send unmatched to controller
-PRI_DEFAULT_DENY    = 1      # Drop everything not explicitly allowed
-PRI_WAN_ACCESS      = 50     # General internet access (un-profiled devices)
-PRI_DEVICE_INTERCEPT = 100   # Per-device WAN intercept/deny (profiled devices)
-PRI_ANTI_LATERAL    = 150    # Block IoT-to-IoT via gateway routing
-PRI_LATERAL_PERMIT  = 160    # Per-pair exception to the anti-lateral rule
-PRI_ESSENTIAL       = 200    # DHCP, DNS, NTP, ARP
-PRI_DEVICE_ALLOW    = 500    # Per-device allowlist entries (reactive)
-PRI_ISOLATE         = 65535  # Dynamic device isolation (Phase 4)
+PRI_TABLE_MISS         = 0      # Safety net: send unmatched to controller
+PRI_DEFAULT_DENY       = 1      # Drop everything not explicitly allowed
+PRI_WAN_ACCESS         = 50     # General internet access (un-profiled devices)
+PRI_UPSTREAM_LAN_BLOCK = 75     # Block RFC1918 destinations by default
+PRI_DEVICE_INTERCEPT   = 100    # Per-device WAN intercept/deny (profiled devices)
+PRI_ESSENTIAL          = 200    # DHCP, DNS, NTP, ARP
+PRI_DEVICE_ALLOW       = 500    # Per-device allowlist entries (reactive)
+PRI_ANTI_LATERAL       = 550    # Block IoT-to-IoT via gateway routing
+PRI_LATERAL_PERMIT     = 600    # Per-pair exception to the anti-lateral rule
+PRI_ISOLATE            = 65535  # Dynamic device isolation (Phase 4)
 
 # Default idle timeout for reactive allowlist flow rules (seconds).
 # When no matching traffic flows for this duration, OVS removes the
@@ -1518,8 +1537,11 @@ class GatewayPolicy(app_manager.RyuApp):
         actions = [parser.OFPActionOutput(wifi)]
         self._add_flow(datapath, PRI_ESSENTIAL, match, actions, tag="ntp-response")
 
-        # 7. Anti-lateral-movement: drop IoT-to-IoT routed traffic (priority 150).
-        # Per-pair lateral permits at priority 160 override this for permitted pairs.
+        # 7. Anti-lateral-movement: drop IoT-to-IoT routed traffic (priority 550).
+        # Sits above the per-device allowlist (500) so that an allowlist entry
+        # for a 192.168.50.x address can never grant lateral movement. Per-pair
+        # lateral permits at priority 600 override this rule for explicitly
+        # permitted pairs; those can only be created via the lateral permit API.
         match = parser.OFPMatch(
             in_port=wifi, eth_type=0x0800,
             ipv4_dst=(IOT_SUBNET, IOT_SUBNET_MASK),
@@ -1528,7 +1550,26 @@ class GatewayPolicy(app_manager.RyuApp):
             datapath, PRI_ANTI_LATERAL, match, actions=[], tag="anti-lateral"
         )
 
-        # 8. General WAN access: allow all other IPv4 in/out (priority 50).
+        # 8. Upstream LAN block: drop traffic destined for any RFC1918 range
+        #    (priority 75). Sits below the per-device allowlist (500) so that
+        #    a device with an explicit allowlist entry for an upstream LAN
+        #    server can still reach it. Devices with no matching allowlist
+        #    entry, including all devices in learning mode, cannot reach the
+        #    upstream LAN. The IoT subnet (192.168.50.0/24) falls within the
+        #    192.168.0.0/16 range but is handled by the higher-priority
+        #    anti-lateral and essential service rules before this is reached.
+        for network, mask in RFC1918_RANGES:
+            match = parser.OFPMatch(
+                in_port=wifi,
+                eth_type=0x0800,
+                ipv4_dst=(network, mask),
+            )
+            self._add_flow(
+                datapath, PRI_UPSTREAM_LAN_BLOCK, match, actions=[],
+                tag=f"upstream-lan-block-{network}",
+            )
+
+        # 9. General WAN access: allow all other IPv4 in/out (priority 50).
         # Profiled devices in enforcing mode are intercepted at priority 100
         # before these rules are reached.
         match = parser.OFPMatch(in_port=wifi, eth_type=0x0800)
@@ -1539,14 +1580,14 @@ class GatewayPolicy(app_manager.RyuApp):
         actions = [parser.OFPActionOutput(wifi)]
         self._add_flow(datapath, PRI_WAN_ACCESS, match, actions, tag="wan-inbound")
 
-        # 9. Per-device intercept rules (enforcing mode only).
+        # 10. Per-device intercept rules (enforcing mode only).
         enforced_count = 0
         if self.enforcement_mode == "enforcing":
             for mac in self.device_profiles:
                 self._install_device_intercept_rules(mac)
                 enforced_count += 1
 
-        # 10. Reinstall any lateral permits that survived a controller restart.
+        # 11. Reinstall any lateral permits that survived a controller restart
         # On reconnect the OVS flow table is reset, so all dynamic rules must
         # be reinstalled. The permit metadata is preserved in self.lateral_permits.
         for key, permit in self.lateral_permits.items():
