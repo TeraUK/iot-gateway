@@ -19,6 +19,9 @@ What this module holds:
 
 import time
 from collections import defaultdict, deque
+import logging
+
+LOG = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Configuration (overridden by pipeline.py on startup)
@@ -39,13 +42,40 @@ DEDUP_SECONDS: int = 120
 
 ip_to_mac: dict[str, str] = {}
 
+def seed_from_leases(leases_path: str) -> int:
+    """
+    Pre-populates ip_to_mac from the dnsmasq leases file.
+
+    It reads the file at startup so that devices with existing leases are
+    immediately resolvable without waiting for a DHCP event in dhcp.log.
+
+    The leases file format is one entry per line:
+      <expiry_epoch> <mac> <ip> <hostname> <client-id>
+
+    Returns the number of mappings loaded.
+    """
+    count = 0
+    try:
+        with open(leases_path, "r") as fh:
+            for line in fh:
+                parts = line.strip().split()
+                if len(parts) >= 3:
+                    mac = parts[1].lower()
+                    ip  = parts[2]
+                    if ip and ip != "0.0.0.0":
+                        ip_to_mac[ip] = mac
+                        count += 1
+    except OSError as exc:
+        LOG.warning("Could not read leases file %s: %s", leases_path, exc)
+    return count
 
 def update_dhcp(entry: dict) -> None:
     """
-    Record an IP->MAC mapping from a dhcp.log entry.
+    Records an IP->MAC mapping from a dhcp.log entry.
 
-    I look for both 'assigned_addr' (DHCP ACK) and 'client_addr' as
-    fallbacks, since not every DHCP message contains all fields.
+    It also re-keys any window entries that were stored under ip:<addr>
+    before this DHCP event arrived, so that those entries are correctly
+    attributed to the device's MAC on the next scoring cycle.
     """
     mac = entry.get("mac", "").lower().strip()
     if not mac:
@@ -55,6 +85,20 @@ def update_dhcp(entry: dict) -> None:
         ip = entry.get(key, "").strip()
         if ip and ip != "0.0.0.0":
             ip_to_mac[ip] = mac
+
+            # Move any window entries that arrived before the DHCP mapping
+            # was known. Without this, those entries remain keyed as ip:<addr>
+            # and produce "unknown" in alerts.
+            ip_key = f"ip:{ip}"
+            if ip_key in device_windows and device_windows[ip_key]:
+                orphaned = device_windows.pop(ip_key)
+                for e in orphaned:
+                    e["_src_mac"] = mac
+                device_windows[mac].extend(orphaned)
+                LOG.debug(
+                    "Re-keyed %d window entries from %s to %s.",
+                    len(orphaned), ip_key, mac,
+                )
             break
 
 

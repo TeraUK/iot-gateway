@@ -299,6 +299,21 @@ def main() -> None:
 
     score_interval  = scoring.get("score_interval",            60)
     min_conn_entries = scoring.get("min_conn_entries",           3)
+    
+    LEASES_FILE = os.environ.get("LEASES_FILE", "/var/lib/misc/dnsmasq.leases")
+
+    # Seed the IP->MAC mapping from the existing DHCP leases file if it exists,
+    # so that devices are immediately resolvable on startup without waiting for DHCP events in dhcp.log.
+    if os.path.exists(LEASES_FILE):
+        n = state.seed_from_leases(LEASES_FILE)
+        LOG.info("Seeded %d IP->MAC mappings from %s.", n, LEASES_FILE)
+    else:
+        LOG.warning(
+            "Leases file not found at %s. MAC resolution will depend on "
+            "dhcp.log events only, which may cause 'unknown' MACs until "
+            "devices renew their leases.",
+            LEASES_FILE,
+        )
 
     ingestor = LogIngestor(ZEEK_LOG_DIR)
     detector = Detector()

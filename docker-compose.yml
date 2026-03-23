@@ -121,6 +121,8 @@ services:
       - ./ml-pipeline/models:/opt/ml-pipeline/models:ro
       # Alert threshold configuration (thresholds.yml).
       - ./ml-pipeline/config:/opt/ml-pipeline/config:ro
+      # Read only mount of dhcp leases to that the pipeline can correctly correlate devices mac addresses.
+      - /var/lib/misc/dnsmasq.leases:/var/lib/misc/dnsmasq.leases:ro
     environment:
       - RYU_API_URL=http://ryu:8080
       - POLL_INTERVAL=10
