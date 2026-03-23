@@ -82,6 +82,20 @@ export {
     global dhcp_table: table[addr] of string = {};
 }
 
+@load base/frameworks/input
+
+# Path to the DHCP seed file generated from dnsmasq.leases at container
+# startup by entrypoint.sh. Used to pre-populate dhcp_table so that
+# devices with cached leases resolve to a MAC immediately rather than
+# appearing as "unknown" until their next DHCP exchange.
+
+const dhcp_seed_path = "/opt/zeek-logs/dhcp_seed.dat" &redef;
+
+# Schema for reading the seed file (ip<TAB>mac format).
+type DhcpSeedKey: record { ip: addr; };
+type DhcpSeedVal: record { mac: string; };
+global dhcp_seed: table[addr] of DhcpSeedVal = {};
+
 event zeek_init()
     {
     Log::create_stream(IoT::ALERT_LOG, [$columns=AlertInfo,
@@ -89,8 +103,43 @@ event zeek_init()
 
     Log::add_filter(IoT::ALERT_LOG, [$name="default",
                                       $path="iot_alerts"]);
+    # Pre-populate dhcp_table from the seed file generated at startup.
+    if ( file_size(dhcp_seed_path) >= 0 )
+        {
+        Input::add_table([
+            $source      = dhcp_seed_path,
+            $name        = "dhcp_seed",
+            $idx         = DhcpSeedKey,
+            $val         = DhcpSeedVal,
+            $destination = dhcp_seed,
+            $mode        = Input::REREAD
+        ]);
+        }
+    else
+        {
+        Reporter::warning(fmt("IoT: DHCP seed file not found at %s.",
+                              dhcp_seed_path));
+        }
     }
 
+event Input::end_of_data(name: string, source: string)
+    {
+    if ( name != "dhcp_seed" )
+        return;
+    # Copy seed entries into dhcp_table. Live DHCP observations take
+    # precedence -- only populate entries not already known.
+    local seeded = 0;
+    for ( ip, entry in dhcp_seed )
+        {
+        if ( ip !in dhcp_table )
+            {
+            dhcp_table[ip] = entry$mac;
+            ++seeded;
+            }
+        }
+    Reporter::info(fmt("IoT: Pre-populated dhcp_table with %d entries.",
+                       seeded));
+    }
 # Populate the IP-to-MAC table from DHCP acknowledgements.
 # Every time dnsmasq hands out a lease, this event fires and records the mapping. 
 # This is the most reliable way to resolve IoT device IPs to MACs inside Zeek.

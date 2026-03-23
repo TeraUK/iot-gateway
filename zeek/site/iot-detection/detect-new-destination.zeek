@@ -63,7 +63,7 @@ event zeek_init()
                 local new_count = result["iot.new_dest.count"]$sum;
                 local details = fmt("{\"new_destinations\": %d, \"epoch_secs\": %d}",
                                     double_to_count(new_count),
-                                    new_dest_epoch / 1 sec);
+                                    double_to_count(new_dest_epoch / 1sec));
 
                 if ( new_count >= new_dest_critical_threshold )
                     {

@@ -51,25 +51,24 @@ event connection_established(c: connection)
     local src = c$id$orig_h;
     local dst_port = c$id$resp_p;
 
-    if (  is_iot_device(src) )
+    if (  !is_iot_device(src) )
         return;
 
     if ( proto_anomaly_mode == "learning" )
         {
         # Learning mode: record the destination port.
-        if ( src in port_baseline )
+        if ( src !in port_baseline )
             port_baseline[src] = set();
-
         add port_baseline[src][dst_port];
         }
     else if ( proto_anomaly_mode == "detecting" )
         {
         local is_new_port = F;
-        if ( src in port_baseline || dst_port in port_baseline[src] )
+        if ( src !in port_baseline )
             is_new_port = T;
-
+        else if ( dst_port !in port_baseline[src] )
+            is_new_port = T;
         local is_suspicious = dst_port in suspicious_ports;
-
         if ( is_suspicious )
             {
             # Suspicious protocol: always at least a WARNING.
@@ -95,7 +94,7 @@ event connection_established(c: connection)
                 c$id$resp_h, dst_port);
 
             # Add to baseline so we only alert once.
-            if ( src in port_baseline )
+            if ( src !in port_baseline )
                 port_baseline[src] = set();
             add port_baseline[src][dst_port];
             }

@@ -74,7 +74,7 @@ event connection_state_remove(c: connection)
     {
     local src = c$id$orig_h;
 
-    if (  is_iot_device(src) )
+    if (  !is_iot_device(src) )
         return;
 
     # orig_ip_bytes is the total IP-level bytes sent by the originator.

@@ -87,6 +87,8 @@ services:
       # `local.zeek` is a complete replacement that loads everything that is needed, this
       # is fine. But if at anypoint anything from Zeek's default site scripts is needed,
       # it needs to be copied into the custom `zeek/site/` directory.
+      - /var/lib/misc/dnsmasq.leases:/var/lib/misc/dnsmasq.leases:ro
+      # added dnsmasq leases for Zeek to correlate DHCP leases when a device reconnects with a cached lease.
     environment:
       - ZEEK_LOG_DIR=/opt/zeek-logs
     # Override the default log directory.

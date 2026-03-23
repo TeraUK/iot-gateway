@@ -86,8 +86,8 @@ redef Log::default_rotation_interval = 1 hr;
 # redef IoT::auto_isolate = T;
 #
 # To switch the baseline-dependent detectors to detection mode:
-# redef IoT::new_dest_mode = "detecting";
-# redef IoT::proto_anomaly_mode = "detecting";
+redef IoT::new_dest_mode = "detecting";
+redef IoT::proto_anomaly_mode = "detecting";
 #
 # To adjust thresholds (examples):
 # redef IoT::port_scan_critical_threshold = 20.0;
