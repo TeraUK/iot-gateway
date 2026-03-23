@@ -134,7 +134,7 @@ services:
       - ML_ALERT_LOG=/opt/zeek-logs/ml_alerts.log
       # Keep auto-isolation disabled (dry-run mode) until the models have been
       # validated against real traffic. Set to "true" to enable.
-      - ML_AUTO_ISOLATE=false
+      - ML_AUTO_ISOLATE=true
     networks:
       - gateway-net
     deploy:
