@@ -54,6 +54,7 @@ import os
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime
+import gzip
 
 import joblib
 import numpy as np
@@ -88,28 +89,53 @@ LOG_FILES = {
 
 def find_log_files(log_dir: str, log_type: str) -> list[str]:
     """
-    Find all log files of a given type (active and rotated) in log_dir.
+    Finds all log files of a given type in log_dir, including compressed
+    archives. It searches two locations:
 
-    Zeek writes active logs as conn.log and rotated archives as
-    conn.2026-03-12-12-00-00.log. I read both.
+      1. The top-level log directory for active and recently rotated plain
+         .log files (e.g. conn.log, conn.2026-03-23-11-00-00.log).
+
+      2. The archive/ subdirectory for gzip-compressed rotated files
+         (e.g. archive/conn.2026-03-22-03-00-00.log.gz) that were moved
+         there by log-maintenance.sh.
+
+    Results are returned in chronological order by filename so that windows
+    are aggregated in the correct time sequence.
     """
     matches = []
-    for filename in sorted(os.listdir(log_dir)):
+
+    # Top-level directory: plain .log files only (active + same-day rotated).
+    for filename in os.listdir(log_dir):
         stem = filename.split(".")[0]
         if stem == log_type and filename.endswith(".log"):
             matches.append(os.path.join(log_dir, filename))
-    return matches
 
+    # Archive subdirectory: compressed .log.gz files produced by
+    # log-maintenance.sh. This is where all logs older than ~24 hours live.
+    archive_dir = os.path.join(log_dir, "archive")
+    if os.path.isdir(archive_dir):
+        for filename in os.listdir(archive_dir):
+            stem = filename.split(".")[0]
+            if stem == log_type and filename.endswith(".log.gz"):
+                matches.append(os.path.join(archive_dir, filename))
+
+    return sorted(matches)
 
 def parse_log_file(path: str):
     """
-    Generator: yield parsed JSON entries from a Zeek log file.
+    Yields parsed JSON entries from a Zeek log file. It handles both plain
+    .log files and gzip-compressed .log.gz files transparently.
 
-    Zeek JSON logs have one JSON object per line. Lines starting with '#'
-    (legacy TSV header lines) and empty lines are skipped.
+    Lines starting with '#' (legacy TSV headers) and blank lines are skipped.
+    Unparseable lines are silently dropped so a single corrupt entry does not
+    abort processing of the whole file.
     """
     try:
-        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        opener = gzip.open(path, "rt", encoding="utf-8", errors="replace") \
+                 if path.endswith(".gz") \
+                 else open(path, "r", encoding="utf-8", errors="replace")
+
+        with opener as fh:
             for line in fh:
                 line = line.strip()
                 if not line or line.startswith("#"):
@@ -120,7 +146,6 @@ def parse_log_file(path: str):
                     continue
     except OSError as exc:
         LOG.warning("Cannot read %s: %s", path, exc)
-
 
 # ---------------------------------------------------------------------------
 # IP -> MAC resolution from dhcp.log
