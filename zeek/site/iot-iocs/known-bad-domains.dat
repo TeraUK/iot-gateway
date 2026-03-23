@@ -47,7 +47,7 @@
 #
 # Last reviewed: 2026-03
 
-evil-test-domain.local	Simulated malicious C2 domain for testing
+example.com	Test domain
 
 # ===========================================================================
 # C2 / Botnet Infrastructure
@@ -184,3 +184,4 @@ ack.ud.lgsmartad.com	LG Smart TV ad targeting data collection
 # Inscape is Vizio's ACR subsidiary. Vizio settled FTC charges over this in 2017.
 # Source: FTC settlement record, IoT Inspector.
 inscape.tv	Vizio ACR / Inscape viewing data collection - FTC-sanctioned in 2017
+

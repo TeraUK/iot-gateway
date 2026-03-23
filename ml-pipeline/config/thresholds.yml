@@ -63,10 +63,10 @@ rules:
   # Flag as CRITICAL if the failed connection rate exceeds this threshold.
   # A value of 0.8 means 80% of connections failed (S0 or REJ state).
   # High failed rate = scanning or blocked C2 beaconing.
-  failed_conn_critical_rate: 0.80
+  failed_conn_critical_rate: 0.90
 
   # Flag as WARNING if failed connection rate exceeds this threshold.
-  failed_conn_warning_rate: 0.50
+  failed_conn_warning_rate: 0.75
 
   # Flag as WARNING if mean DNS query name entropy exceeds this value.
   # Values above 4.5 are indicative of DGA or DNS tunnelling.
