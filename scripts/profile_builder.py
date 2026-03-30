@@ -142,7 +142,7 @@ def parse_json_log(filepath):
         print(f"  Warning: could not read {filepath} via docker: {e}", file=sys.stderr)
 
 
-def analyse_conn_logs(zeek_dir, ip_to_mac):
+def analyse_conn_logs(zeek_dir, ip_to_mac) -> defaultdict:
     """
     Parse all conn.log files and build a per-device connection profile.
 
@@ -195,7 +195,7 @@ def analyse_conn_logs(zeek_dir, ip_to_mac):
     return device_connections
 
 
-def analyse_dns_logs(zeek_dir, ip_to_mac):
+def analyse_dns_logs(zeek_dir, ip_to_mac) -> defaultdict:
     """
     Parse all dns.log files and build a per-device DNS query profile.
 

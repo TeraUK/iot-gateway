@@ -39,7 +39,7 @@ die()     { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 # ---------------------------------------------------------------------------
 
 VENV_DIR=".venv-docs"
-DOCS_REQUIREMENTS="docs/requirements.txt"
+DOCS_REQUIREMENTS="installation/requirements.txt"
 MKDOCS_CONFIG="mkdocs.yml"
 
 # ---------------------------------------------------------------------------

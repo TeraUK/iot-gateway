@@ -23,7 +23,6 @@ ssl.log
 # ML model artifacts
 *.h5
 *.pkl
-*.joblib
 models/checkpoints/
 
 # AdGuard Home runtime data
