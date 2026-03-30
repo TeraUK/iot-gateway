@@ -6,7 +6,7 @@ This page covers installation and initial operation of the IoT Security Gateway.
 
 To install the gateway, run **installation/install.sh**
 
-To build the docs, run **installation/build-docs.sh** (already done if you made it here!)
+To build the docs, run **installation/build-docs.sh**
 
 ## Per-device destination allowlists
 

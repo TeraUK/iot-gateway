@@ -130,7 +130,7 @@ class Detector:
 
         try:
             # decision_function returns negative for anomalies.
-            # I invert the sign so that higher = more anomalous.
+            # Invert the sign so that higher = more anomalous.
             raw_score = model.decision_function(vector)[0]
             anomaly_score = float(-raw_score)
             return anomaly_score

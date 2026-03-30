@@ -368,8 +368,8 @@ def write_output(profiles, output_path):
     """
     Write a draft device_profiles.json file.
 
-    The _stats fields are included as comments for my review but
-    are ignored by the Ryu app (it only reads name, manufacturer,
+    The _stats fields are included as comments for system admmins 
+    review but are ignored by the Ryu app (it only reads name, manufacturer,
     allowed_domains, allowed_cidrs).
     """
     output = {

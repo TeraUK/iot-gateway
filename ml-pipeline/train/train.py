@@ -2,18 +2,16 @@
 """
 IoT Security Gateway - ML Pipeline Offline Training Script
 
-Reads historical Zeek logs from the shared Docker volume, build feature
-vectors in 5-minute windows per device, and train one Isolation Forest model
-per device. I also train a global fleet model that serves as a fallback for
+Reads historical Zeek logs from the shared Docker volume, builds feature
+vectors in 5-minute windows per device, and trains one Isolation Forest model
+per device. The script also trains a global fleet model that serves as a fallback for
 newly-connected devices.
 
 Prerequisite
 ------------
-Requires at least several weeks of Zeek logs collected with POL-01 through
-POL-07 active (as required by POL-08). Running training on insufficient data
-will produce excessive false positives. The recommended minimum is 2 weeks
-of logs covering the device's typical usage patterns, including weekend
-behaviour.
+Requires at least several weeks of Zeek logs to be collected. 
+Running training on insufficient data will produce excessive false positives. 
+The recommended minimum is 2 weeks of logs covering the device's typical usage patterns, including weekend behaviour.
 
 Usage
 -----
@@ -60,11 +58,11 @@ import joblib
 import numpy as np
 from sklearn.ensemble import IsolationForest
 
-# Add the app directory to the path so I can import the feature module.
+# Add the app directory to the path so the script can import the features module.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, "..", "app"))
 
-from features import FEATURE_NAMES, extract  # noqa: E402
+from features import FEATURE_NAMES, extract  # noqa: E402 - tells the linter to ignore the error on this line
 
 logging.basicConfig(
     level  = logging.INFO,
@@ -126,7 +124,7 @@ def parse_log_file(path: str):
     Yields parsed JSON entries from a Zeek log file. It handles both plain
     .log files and gzip-compressed .log.gz files transparently.
 
-    Lines starting with '#' (legacy TSV headers) and blank lines are skipped.
+    Lines starting with '#' (legacy Tab-Separated Value headers) and blank lines are skipped.
     Unparseable lines are silently dropped so a single corrupt entry does not
     abort processing of the whole file.
     """
@@ -231,11 +229,7 @@ def build_windows(log_dir: str, ip_to_mac: dict[str, str]) -> dict[str, list[dic
 # Model training
 # ---------------------------------------------------------------------------
 
-def train_model(
-    feature_dicts: list[dict],
-    contamination: float,
-    n_estimators:  int,
-) -> IsolationForest:
+def train_model(feature_dicts: list[dict], contamination: float, n_estimators:  int,) -> IsolationForest:
     """
     Train an Isolation Forest on a list of feature dicts.
 

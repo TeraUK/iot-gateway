@@ -73,14 +73,7 @@ class Alerter:
     # Public API
     # ------------------------------------------------------------------
 
-    def dispatch(
-        self,
-        severity:    str,
-        src_ip:      str,
-        src_mac:     str,
-        description: str,
-        details:     dict,
-    ) -> None:
+    def dispatch(self, severity: str, src_ip: str, src_mac: str, description: str, details: dict,) -> None:
         """
         Emit an alert.
 

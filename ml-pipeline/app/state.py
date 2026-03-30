@@ -1,7 +1,7 @@
 """
 IoT Security Gateway - ML Pipeline State
 
-I keep all mutable runtime state here in a single module so every other
+All mutable runtime state is kept here in a single module so every other
 component can import it without circular dependencies.
 
 What this module holds:
@@ -120,7 +120,7 @@ def add_entry(mac: str, entry: dict) -> None:
     """
     Add a log entry to a device's rolling window and prune stale entries.
 
-    The 'ts' field in Zeek JSON logs is a UNIX epoch float. I use it
+    The 'ts' field in Zeek JSON logs is a UNIX epoch float. Use here
     for window expiry rather than wall-clock time so that replaying
     archived logs during training works correctly.
     """
@@ -149,8 +149,8 @@ def all_active_macs() -> list[str]:
 # ---------------------------------------------------------------------------
 # Per-device feature baselines
 # ---------------------------------------------------------------------------
-# I track an exponentially-weighted running mean and variance for each
-# feature per device. This lets me compute relative thresholds
+# Tracks an exponentially-weighted running mean and variance for each
+# feature per device. This lets the system compute relative thresholds
 # (e.g., "2x the device's normal DNS rate") in addition to the absolute
 # Isolation Forest score.
 #
@@ -166,7 +166,7 @@ def update_baseline(mac: str, features: dict[str, float]) -> None:
     """
     Update the running mean and variance for each feature of a device.
 
-    I use an exponentially-weighted approach so that the baseline adapts
+    Uses an exponentially-weighted approach so that the baseline adapts
     slowly over time, meaning gradual behavioural drift is eventually
     absorbed while sudden spikes remain anomalous.
     """
@@ -190,7 +190,7 @@ def baseline_established(mac: str, min_observations: int = 50) -> bool:
     """
     Return True if this device has enough observations for reliable baselines.
 
-    I require at least min_observations scoring cycles before trusting the
+    Require at least min_observations scoring cycles before trusting the
     baseline, to avoid triggering false positives on newly-connected devices.
     50 observations at a 60-second scoring interval = ~50 minutes of data.
     """
@@ -203,8 +203,8 @@ def baseline_established(mac: str, min_observations: int = 50) -> bool:
 # ---------------------------------------------------------------------------
 # Alert deduplication
 # ---------------------------------------------------------------------------
-# I track (mac, detector, severity) fingerprints with their last-fired
-# timestamp so I don't emit floods of identical alerts for the same device.
+# Tracks (mac, detector, severity) fingerprints with their last-fired
+# timestamp so the system doesn't emit floods of identical alerts for the same device.
 
 _alert_last_fired: dict[tuple, float] = {}
 

@@ -43,7 +43,7 @@ from collections import Counter
 LOG = logging.getLogger(__name__)
 
 # Ordered list of feature names. The order here defines the column order
-# passed to scikit-learn. I must not change this order after training without
+# passed to scikit-learn. This order must not change after training without
 # retraining all models.
 FEATURE_NAMES: list[str] = [
     # conn.log features
@@ -99,8 +99,11 @@ def to_vector(features: dict[str, float]) -> list[float]:
 # Private: conn.log feature extraction
 # ---------------------------------------------------------------------------
 
+#S0 (Connection attempt seen, no reply)
+#REJ (Connection attempt rejected)
+#RSTRH (Responder sent a SYN-ACK then RST)
+#RSTOS0 (Originator sent a SYN and then a RST)
 _FAILED_STATES = {"S0", "REJ", "RSTRH", "RSTOS0"}
-
 
 def _conn_features(entries: list[dict]) -> dict[str, float]:
     """Extract connection-layer features from conn.log entries."""

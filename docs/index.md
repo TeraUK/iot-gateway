@@ -1,6 +1,6 @@
 # IoT Security Gateway
 
-This is the technical documentation for the SDN-based IoT security gateway, built on an Ubuntu mini PC using Open vSwitch, Ryu, Zeek, AdGuard Home, and a custom machine learning pipeline. The gateway enforces a layered security, zero trust security model for IoT devices.
+This is the technical documentation for the SDN-based IoT security gateway, built on an Ubuntu mini PC using Open vSwitch, Ryu, Zeek, AdGuard Home, and a custom machine learning pipeline. The gateway enforces a layered, zero trust security model for IoT devices.
 
 ## What the gateway does
 
@@ -8,13 +8,13 @@ Consumer IoT devices are high-risk network participants. They run outdated firmw
 
 The key capabilities are:
 
-- **Default-deny network isolation** -all traffic is dropped unless an explicit OpenFlow rule permits it.
-- **Micro-segmentation** -IoT devices cannot communicate with each other directly.
-- **Per-device destination allowlists** -each device is restricted to the destinations it legitimately needs.
-- **Forced DNS filtering** -all DNS queries are intercepted and processed by AdGuard Home, including from devices with hardcoded resolvers.
-- **Passive traffic analysis** -Zeek monitors all traffic and runs rule-based detection scripts in real time.
-- **Automated device isolation** -devices exhibiting malicious or anomalous behaviour are automatically quarantined via SDN flow rules.
-- **ML-based anomaly detection** -an Isolation Forest pipeline detects behavioural deviations that rule-based scripts may miss.
+- **Default-deny network isolation** - all traffic is dropped unless an explicit OpenFlow rule permits it.
+- **Micro-segmentation** - IoT devices cannot communicate with each other directly.
+- **Per-device destination allowlists** - each device is restricted to the destinations it legitimately needs.
+- **Forced DNS filtering** - all DNS queries are intercepted and processed by AdGuard Home, including from devices with hardcoded resolvers.
+- **Passive traffic analysis** - Zeek monitors all traffic and runs rule-based detection scripts in real time.
+- **Automated device isolation** - devices exhibiting malicious or anomalous behaviour are automatically quarantined via SDN flow rules.
+- **ML-based anomaly detection** - an Isolation Forest pipeline detects behavioural deviations that rule-based scripts may miss.
 
 ## Architecture at a glance
 

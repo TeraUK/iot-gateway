@@ -1,6 +1,6 @@
 # ML Pipeline
 
-The ML pipeline (POL-08) provides a second layer of anomaly detection that operates alongside the Zeek rule-based detection scripts. Where Zeek catches specific known patterns (port scanning, known-bad IPs, extreme DNS rates), the ML pipeline catches statistical deviations from a device's normal behaviour that don't match any specific rule.
+The ML pipeline provides a second layer of anomaly detection that operates alongside the Zeek rule-based detection scripts. Where Zeek catches specific known patterns (port scanning, known-bad IPs, extreme DNS rates), the ML pipeline catches statistical deviations from a device's normal behaviour that don't match any specific rule.
 
 ## Overview
 

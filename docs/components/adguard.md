@@ -1,10 +1,10 @@
 # AdGuard Home
 
-AdGuard Home provides DNS filtering (POL-03). It runs as a Docker container with a static IP (`172.20.0.53`) so that the nftables DNAT rule can always target it reliably.
+AdGuard Home is the systems DNS server and it provides DNS filtering. It runs as a Docker container with a static IP (`172.20.0.53`) so that the nftables DNAT rule can always target it reliably.
 
 ## Role in the architecture
 
-AdGuard sits at the end of the nftables DNAT chain. Every DNS query from an IoT device - regardless of the target DNS server configured on the device - is redirected to `172.20.0.53:53` by nftables before leaving the host. AdGuard then:
+AdGuard sits at the end of the nftables DNAT chain. Every DNS query from an IoT device, regardless of the target DNS server configured on the device, is redirected to `172.20.0.53:53` by nftables before leaving the host. AdGuard then:
 
 1. Checks the query against its blocklists.
 2. If blocked, returns `0.0.0.0` (or NXDOMAIN depending on configuration).
@@ -23,7 +23,7 @@ DoH (DNS-over-HTTPS, port 443) cannot be blocked without disrupting legitimate H
 
 ## Blocklist configuration
 
-I use a combination of:
+Uses a combination of:
 
 - **General ad and tracking blocklists** - block analytics, advertising, and fingerprinting domains across all devices.
 - **IoT-specific blocklists** - target manufacturer telemetry, firmware phone-home domains, and analytics endpoints commonly used by consumer IoT devices.

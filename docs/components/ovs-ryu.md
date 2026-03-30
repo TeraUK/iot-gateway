@@ -1,6 +1,6 @@
 # OVS and Ryu
 
-Open vSwitch (OVS) is the data plane. It forwards packets according to OpenFlow rules installed by the Ryu SDN controller. Together they implement the enforcement layer for POL-01 (micro-segmentation), POL-02 (per-device allowlists), POL-04 (default-deny), POL-05 (essential services), POL-07 (dynamic isolation), and the lateral movement permit system.
+Open vSwitch (OVS) is the data plane. It forwards packets according to OpenFlow rules installed by the Ryu SDN controller. Together they implement the enforcement layer for micro-segmentation, per-device allowlists, essential services, dynamic isolation, and the lateral movement permit system.
 
 ## Open vSwitch
 

@@ -1,19 +1,19 @@
 """
 IoT Security Gateway - ML Pipeline Log Ingestor
 
-I tail Zeek's JSON log files on the shared volume, reading only new lines
+Tails Zeek's JSON log files on the shared volume, reading only new lines
 since the last poll. On each call to poll(), the ingestor returns a dict of
 log type -> list of parsed JSON entries.
 
-Log types I consume:
+Log types consumed:
   conn  - connection summary log (features: bytes, duration, ports, states)
   dns   - DNS query/response log (features: query rate, NXDOMAIN, entropy)
   dhcp  - DHCP lease log (used for IP->MAC resolution, not scoring)
   http  - HTTP transaction log (future features: user-agent, status codes)
   ssl   - TLS connection log (future features: invalid cert rate)
 
-I detect Zeek's hourly log rotation by tracking each file's inode. When the
-inode changes (the old file was renamed and a new one created), I reset the
+Detects Zeek's hourly log rotation by tracking each file's inode. When the
+inode changes (the old file was renamed and a new one created), reset the
 read position to 0.
 
 Zeek writes logs to the working directory set in docker-compose.yml:
@@ -40,7 +40,7 @@ class LogIngestor:
     """
     Tails a set of Zeek log files, returning new JSON entries on each poll.
 
-    I maintain the byte offset and inode for each file so I can resume
+    Maintains the byte offset and inode for each file so the system can resume
     reading after a restart and detect log rotation correctly.
     """
 
@@ -81,8 +81,8 @@ class LogIngestor:
         """
         Open the file at the stored position, read new lines, update position.
 
-        I detect rotation by comparing the current file's inode to the stored
-        one. If they differ, the file has been rotated and I reset to position 0.
+        Detects rotation by comparing the current file's inode to the stored
+        one. If they differ, the file has been rotated and the system resets to position 0.
         """
         if not os.path.exists(path):
             return []

@@ -30,11 +30,11 @@ python3 scripts/profile_builder.py \
 
 The script produces two lists per device. `allowed_domains` contains every domain name the device queried via DNS, sorted by query frequency. `allowed_cidrs` contains IP addresses the device connected to directly without a corresponding DNS resolution - these are added as `/32` entries and typically represent hardcoded NTP servers, update infrastructure, or manufacturer cloud endpoints that bypass DNS.
 
-The `_stats` block in the output (total connections, unique destinations, top destinations by connection count) is for my review and is ignored by Ryu.
+The `_stats` block in the output (total connections, unique destinations, top destinations by connection count) is for admin review and is ignored by Ryu.
 
 **Reviewing the draft output:**
 
-Before loading the profiles into Ryu I need to review the draft and:
+Before loading the profiles into Ryu you need to review the draft and:
 
 - Remove ad and analytics domains that AdGuard may not yet have blocked
 - Remove destinations that look like one-off initialisation calls (set `--min-connections` higher to filter these automatically)

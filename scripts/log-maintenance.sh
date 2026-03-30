@@ -52,7 +52,7 @@ else
     # Zeek's log rotation creates files with timestamps in the name,
     # e.g. conn.2026-03-06-12-00-00.log or conn.00:00:00-01:00:00.log.
     # Active log files have simple names like conn.log.
-    # I compress the rotated ones and move them to the archive directory.
+    # Compresses the rotated ones and moves them to the archive directory.
     #
     # The Zeek LTS image includes gzip, find, and sh.
 
@@ -100,7 +100,7 @@ fi
 
 # ---- Step 5: Verify AdGuard query log is healthy ----
 # AdGuard manages its own query log retention (set to 2160h = 90 days
-# in AdGuardHome.yaml). I just verify the container is running and
+# in AdGuardHome.yaml). The system just verifies the container is running and
 # has query log data.
 AG_STATE=$(docker inspect --format '{{.State.Status}}' adguard-home 2>/dev/null || echo "not found")
 if [ "$AG_STATE" = "running" ]; then
@@ -116,8 +116,8 @@ fi
 
 # ---- Step 6: Check dnsmasq DHCP lease file ----
 # dnsmasq writes DHCP leases to /var/lib/misc/dnsmasq.leases by default.
-# This file is small and does not need rotation, but I verify it exists
-# so I know DHCP assignment history is being recorded.
+# This file is small and does not need rotation, but the script verifies it exists
+# so the system admin knows DHCP assignment history is being recorded.
 if [ -f "/var/lib/misc/dnsmasq.leases" ]; then
     LEASE_COUNT=$(wc -l < /var/lib/misc/dnsmasq.leases)
     log "dnsmasq lease file: ${LEASE_COUNT} active leases recorded."

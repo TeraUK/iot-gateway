@@ -69,7 +69,7 @@ nav:
     - Network Topology: architecture/network-topology.md
     - Log Generation: architecture/log-generation.md
     - Automated Anomaly Detection and Isolation: architecture/detection-to-isolation-loop.md
-    - Traffic Path Sequence Diagram: architecture/traffic-path-sequence-diagrams.md
+    - Traffic Path Sequence Diagrams: architecture/traffic-path-sequence-diagrams.md
   - Components:
     - OVS and Ryu: components/ovs-ryu.md
     - Zeek: components/zeek.md
@@ -102,7 +102,14 @@ nav:
     - Profile Builder: scripts/profile-builder.md
     - Verification Scripts: scripts/verification-scripts.md
   - Python Code Ref:
-    - ML Pipeline: python-code-reference/ml-pipeline.md
+    - Overview: python-code-reference/index.md
+    - ML Pipeline:
+      - pipeline.py: python-code-reference/ml-pipeline/pipeline.md
+      - state.py: python-code-reference/ml-pipeline/state.md
+      - ingestor.py: python-code-reference/ml-pipeline/ingestor.md
+      - features.py: python-code-reference/ml-pipeline/features.md
+      - detector.py: python-code-reference/ml-pipeline/detector.md
+      - alerter.py: python-code-reference/ml-pipeline/alerter.md
     - Model Training: python-code-reference/training.md
     - Ryu Gateway Policy App: python-code-reference/ryu-gateway-policy-app.md
     - Profile Builder: python-code-reference/profile-builder.md

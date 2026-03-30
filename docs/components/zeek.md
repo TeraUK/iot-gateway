@@ -1,6 +1,6 @@
 # Zeek
 
-Zeek provides the observability layer (POL-06) and rule-based threat detection. It runs in passive mode on a mirrored copy of all OVS bridge traffic and writes structured JSON logs to the shared `zeek-logs` volume.
+Zeek provides the observability layer and rule-based threat detection. It runs in passive mode on a mirrored copy of all OVS bridge traffic and writes structured JSON logs to the shared `zeek-logs` volume.
 
 ## Configuration
 
