@@ -32,27 +32,6 @@ Known limitation - multicast service discovery:
     to support full device discovery; this is documented as a future
     enhancement.
 
-Flow Rule Priority Scheme (updated for Phase 5):
-    0     - Table-miss (send to controller, safety net)
-    1     - Default deny (drop everything not explicitly allowed)
-    50    - General WAN access (active for un-profiled devices)
-    100   - Per-device WAN intercept (send to controller for evaluation)
-            and per-device inbound deny (block un-allowed return traffic)
-    200   - Per-device allowlist entries (reactive, installed on first
-            matching packet, with idle timeout)
-    400   - Upstream LAN block (drop traffic destined for RFC1918 ranges;
-            sits above the allowlist so that allowlist entries cannot
-            automatically grant upstream LAN access)
-    450   - Per-device upstream LAN permit (explicit API-only exception
-            to the RFC1918 block for a specific device/destination pair)
-    550   - Anti-lateral-movement (block IoT-to-IoT via gateway routing;
-            sits above the allowlist so that an allowlist entry for a
-            192.168.50.x address can never grant lateral movement)
-    600   - Per-pair lateral permit (bidirectional exception to rule 550;
-            can only be granted via the lateral permit API)
-    800   - Essential services (DHCP, DNS, NTP, ARP; above anti-lateral
-            so that essential traffic is never blocked by that rule)
-    65535 - Dynamic isolation (Phase 4)
 """
 
 from ryu.base import app_manager

@@ -86,12 +86,13 @@ The following table reflects all priority levels currently in use. Higher priori
 | Priority | Rule type | Description |
 |----------|-----------|-------------|
 | 65535 | Isolation | Per-device DROP rule (dynamic, installed on alert) |
+| 800 | Essential Services | Allows traffic for essential services |
 | 600 | Lateral permit | Per-pair exception to the anti-lateral-movement rule (dynamic, API-controlled only) |
 | 550 | Anti-lateral-movement | Drops IoT-to-IoT routed traffic via gateway. Sits above the allowlist — an allowlist entry cannot grant lateral movement |
-| 500 | Allowlist | Per-device destination FORWARD rules (Phase 3, reactive). Can include upstream LAN addresses for devices that legitimately need them |
-| 200 | Essential services | DHCP, DNS, NTP, ARP - universally permitted |
-| 100 | Per-device intercept | Matches profiled devices in enforcing mode |
-| 75 | Upstream LAN block | Drops traffic destined for RFC1918 ranges by default. Sits below the allowlist — a specific upstream LAN IP can be granted via a device allowlist entry |
-| 50 | General WAN | Allows all devices to reach the internet (Phase 2, overridden by per-device rules) |
+| 450 | Per-device upstream LAN permit | Explicit API-only exception to the RFC1918 block for a specific device/destination pair |
+| 400 | Upstream LAN block | Drop traffic destined for RFC1918 ranges |
+| 200 | Per-device allowlist entries | reactive, installed on first matching packet, with idle timeout |
+| 100 | Per-device WAN intercept | Intercepts/Denies outbound WAN for profiled devices |
+| 50 | General WAN | WAN access for un-profiled devices |
 | 1 | Default deny | Drops everything not explicitly permitted |
 | 0 | Table-miss | Sends unmatched packets to controller |
