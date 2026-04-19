@@ -20,7 +20,7 @@ exec to access the Zeek log volume:
 
   # From the project root:
   python3 ml-pipeline/train/train.py \\
-      --log-dir /path/to/zeek-logs \\
+      --log-dir /var/lib/docker/volumes/iot-gateway_zeek-logs/_data \\
       --output-dir ./ml-pipeline/models \\
       --min-windows 576
 
