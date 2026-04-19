@@ -2,10 +2,10 @@
 #
 # Python dependencies for building the MkDocs documentation site.
 # Install via build-docs.sh, which manages an isolated virtual environment,
-# or manually with: pip install -r docs/requirements.txt
+# or manually with: pip install -r requirements.txt
 #
 # To upgrade all packages to their latest compatible versions, run:
-#   pip install --upgrade -r docs/requirements.txt
+#   pip install --upgrade -r requirements.txt
 # then commit the updated file.
 
 # Core MkDocs framework

@@ -84,7 +84,7 @@ redef IoT::new_dest_mode = "detecting";
 
 ### `detect-protocol-anomaly.zeek`
 
-Also operates in `learning`/`detecting` modes. Tracks which destination ports each device has used. In detecting mode, new ports trigger INFO alerts. Connections to a hardcoded set of suspicious ports (SSH/22, Telnet/23, Telnet/2323, FTP/21, IRC/6667, Metasploit/4444, ADB/5555) always trigger WARNING regardless of mode.
+Also operates in `learning`/`detecting` modes. Tracks which destination ports each device has used. In detecting mode, new ports trigger INFO alerts. Connections to a hardcoded set of suspicious ports (SSH/22, Telnet/23, Telnet/2323, FTP/21, IRC/6667, Metasploit/4444, ADB/5555, TCP/6697 IRC over TLS) always trigger WARNING regardless of mode.
 
 Switch to detecting mode:
 ```zeek

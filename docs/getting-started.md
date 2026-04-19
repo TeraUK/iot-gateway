@@ -30,7 +30,7 @@ curl -X POST http://127.0.0.1:8080/policy/allowlists/mode \
      -d '{"mode": "enforcing"}'
 
 # Verify
-# Script may flag gateway policy app as having no installed rules if the last 50 log lines # dont contain the "Policy rules installed" output from Ryus startup.
+# Script may flag gateway policy app as having no installed rules if the last 50 log lines dont contain the "Policy rules installed" output from Ryus startup.
 sudo ./scripts/verify-phase3.sh
 ```
 
@@ -47,8 +47,6 @@ By default, auto-isolation is disabled (`auto_isolate = F` in `local.zeek`). Ena
 ```zeek
 # In zeek/site/local.zeek, once confident:
 redef IoT::auto_isolate = T;
-redef IoT::new_dest_mode = "detecting";
-redef IoT::proto_anomaly_mode = "detecting";
 ```
 
 Then restart Zeek: `docker compose restart zeek`

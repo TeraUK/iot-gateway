@@ -1,8 +1,8 @@
 # Verification scripts
 
-These scripts where created at the end of each stage of development to verify that all new components where running correctly. 
+These scripts were created at the end of each stage of development to verify that all new components were running correctly. 
 
-The scripts where then used to create health-check.sh, a comprehensive scripts that verifiers all critical components. See [health-check.sh](health-check.md).
+The scripts were then used to create health-check.sh, a comprehensive scripts that verifiers all critical components. See [health-check.sh](health-check.md).
 
 ## verify-phase1.sh
 
