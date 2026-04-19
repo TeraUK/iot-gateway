@@ -1,24 +1,23 @@
 """
 IoT Security Gateway - SDN Policy Application
 
-Builds on Phase 4 (anomaly detection and automated isolation) by adding
-administrator-controlled per-pair lateral movement permits. By default all
-IoT-to-IoT communication remains blocked by the anti-lateral-movement rule.
-An administrator may POST to the lateral-permits endpoint to install a
-priority-600 exception that allows bidirectional unicast IP traffic between
-a specific pair of devices.
-
 Pre-requisite for lateral permits to function:
     Proxy ARP must be enabled on br0 so that devices can resolve each other's
     MAC address via the gateway rather than directly:
 
         sudo sysctl -w net.ipv4.conf.br0.proxy_arp=1
+        net.ipv4.conf.br0.proxy_arp_pvlan = 1
+    
+    For the Gateway to function, Ipv4 forwarding must also be enabled on the host:
+        net.ipv4.ip_forward=1
+        
+    To make this persistent across reboots, add the following lines to
+    /etc/sysctl.d/99-iot-gateway.conf (handled by the installation script):
 
-    To make this persistent across reboots, add the following line to
-    /etc/sysctl.d/99-iot-gateway.conf:
-
+        net.ipv4.ip_forward=1
         net.ipv4.conf.br0.proxy_arp = 1
-
+        net.ipv4.conf.br0.proxy_arp_pvlan = 1
+        
     Without proxy ARP, ARP broadcasts between associated stations are blocked
     by ap_isolate=1 in hostapd, and devices will never resolve each other's
     IP address, preventing any IP communication even if the permit rule exists.

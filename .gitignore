@@ -60,3 +60,6 @@ site/
 
 #ignore .venv-docs
 .venv-docs/
+
+#ignore ML Models
+*.joblib
