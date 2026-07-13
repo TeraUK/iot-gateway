@@ -1,5 +1,7 @@
 # IoT Security Gateway running on an Ubuntu mini PC. 
 
+[Technical Documentation](https://iot-gateway.readthedocs.io/en/latest/)
+
 ## What the gateway does
 
 Consumer IoT devices are high-risk network participants. They run outdated firmware, have no endpoint security capabilities, and communicate with a mix of legitimate cloud services and potentially unwanted telemetry endpoints. The gateway addresses this by treating every IoT device as untrusted by default and enforcing the policy at the network layer, regardless of the device's own behaviour.
@@ -15,8 +17,6 @@ The key capabilities are:
 - **ML-based anomaly detection** - an Isolation Forest pipeline detects behavioural deviations that rule-based scripts may miss.
 
 ## Installation and Documentation
-
-[Technical Documentation](https://iot-gateway.readthedocs.io/en/latest/)
 
 The recommended operating system is **Ubuntu Server 24.04.4 LTS**
 
