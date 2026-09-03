@@ -1,7 +1,8 @@
 site_name: IoT Security Gateway
 site_description: Documentation for the SDN-based IoT security gateway
-site_author: TeraUK
+site_author: Regan Williams
 site_url: https://iot-gateway.readthedocs.io/
+copyright: Written and maintained by Regan Williams
 
 theme:
   name: material
